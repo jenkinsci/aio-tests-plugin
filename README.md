@@ -39,6 +39,7 @@ has been generated, the AIO Tests plugin can be used as below to report results 
 2. Click on the Post Build Actions -> Select Publish Results to AIO Tests
 3. Specify the Project for which run results need to be published
 4. Choose a framework and specify the path of the file - reletive to the workspace eg. ```/target/surefire-reports/testng-results.xml```
+
       >For frameworks other than JUnit or TestNG, if results file is being generated in JUnit format, please select JUnit
 5. Select preferences for results reporting
 6. Specify the API Key generated from AIO Tests in Jira.  Please refer [Generating API Key](https://aioreports.atlassian.net/wiki/spaces/ATDoc/pages/484048912/Access+Token)
