@@ -17,7 +17,7 @@ The plugin gives the following options
 
 ## Getting started
 
-###Installing the plugin
+### Installing the plugin
 
 AIO Tests Jenkins plugin can be installed from the Jenkins marketplace as below.
 
@@ -25,11 +25,11 @@ AIO Tests Jenkins plugin can be installed from the Jenkins marketplace as below.
 2. Go to Manage Jenkins > Manage Plugins > Available
 3. Now search for AIO Tests and click Install
 
-###Requirements
+### Requirements
 1. Jenkins 2.235.1 or higher
 2. Jira cloud instance with AIO Tests for Jira installed 
 
-###Reporting results
+### Reporting results
 
 The plugin works in the `post build actions` step, after the build steps are run.  
 Assuming that the tests have run and a results xml (Junit/TestNG/any XUnit framework which generates a JUnit xml report)
@@ -54,7 +54,7 @@ for more information
 | Hide Publish Result Details | If checked, it would hide testcase wise details                                                    |
 | Fail build if result publishing fails     | If checked, the build result will be updated to failed, in case publishing results fails      |
 
-###Reporting results in pipeline
+### Reporting results in pipeline
 
 The AIO Tests Jenkins plugin has support for being run as a pipeline task.  
 For security of API Key, secret text credentials can be used to avoid putting the key in plain text.
@@ -86,7 +86,7 @@ pipeline {
                          entry: [$class: 'NewCycle', cyclePrefix: 'Regression Run V1.0'],
                         //For existing cycles : entry: [$class: 'ExistingCycle', cycleKey: 'SCRUM-CY-191'],
                          apiKey : hudson.util.Secret.fromString(env.AIO_TESTS_API_KEY),
-                         filePath : '/target/surefire-reports/testng-results.xml',
+                         resultsFilePath : '/target/surefire-reports/testng-results.xml',
                          projectKey: 'SCRUM',
                          hideDetails: false
                
@@ -95,7 +95,7 @@ pipeline {
    }
 ```
 
-###Parameters
+### Parameters
 If the job is a parameterized build, the plugin supports parametrization for the project key, results file path, cycle prefix,
 existing cycle key and API key fields. 
 
