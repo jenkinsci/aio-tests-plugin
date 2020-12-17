@@ -1,0 +1,38 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core"
+         xmlns:f="/lib/form">
+    <f:section title="AIO Tests">
+        <f:entry  title="Framework" field="frameworkType">
+            <select name="frameworkType">
+                <option value="testng">TestNG</option>
+                <option value="junit">JUnit</option>
+            </select>
+        </f:entry>
+        <f:entry title="Results file path" field="resultsFilePath">
+            <f:textbox default="/target/surefire-reports/testng-results.xml" />
+        </f:entry>
+        <f:entry title="Project Key" field="projectKey" >
+            <f:textbox />
+        </f:entry>
+        <f:entry title="Cycle Preferences">
+            <f:hetero-radio field="entry" descriptors="${descriptor.entryDescriptors}"/>
+        </f:entry>
+        <f:entry title="Add cases if not in Cycle?" field="addCaseToCycle">
+            <f:checkbox field="addCaseToCycle"/>
+        </f:entry>
+        <f:entry title="Create case if no key or automation key is found" field="createCase">
+            <f:checkbox field="createCase"/>
+        </f:entry>
+        <f:entry title="API Key" field="apiKey" >
+            <f:password field="apiKey"/>
+        </f:entry>
+        <f:advanced>
+            <f:entry title="Hide publish response details" field="hideDetails">
+                <f:checkbox field="hideDetails"/>
+            </f:entry>
+            <f:entry title="Fail build if result publishing fails" field="failBuildOnFailure">
+                <f:checkbox field="failBuildOnFailure" />
+            </f:entry>
+        </f:advanced>
+    </f:section>
+</j:jelly>
