@@ -16,7 +16,7 @@ import java.util.Iterator;
 public class AIOCloudClient {
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON_UNICODE = "application/json;charset=UTF-8";
-    private static final String AIO_TESTS_HOST = "http://localhost:9090";
+    private static final String AIO_TESTS_HOST = "https://tcms.aioreports.com/aio-tcms";
     private static final String API_VERSION = "/api/v1";
     private static final String AIO_SCHEME = "AioAuth";
     private static final String IMPORT_RESULTS_FILE = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results";

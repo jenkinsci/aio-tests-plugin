@@ -88,7 +88,12 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
                         @NonNull TaskListener taskListener) throws InterruptedException, IOException {
 
         logStartEnd(true, taskListener);
-
+        if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)) {
+            taskListener.getLogger().println("Mandatory data (frameworkType/ project key / cycle preference / results file path is missing");
+            this.setResultStatus(run, taskListener);
+            logStartEnd(false, taskListener);
+            return;
+        }
         taskListener.getLogger().println("Framework Type: " + this.frameworkType);
         EnvVars buildEnvVars = this.setupEnvVars(run, taskListener);
         this.resultsFilePath = (String)this.getParameterizedDataIfAny(buildEnvVars, this.resultsFilePath);
