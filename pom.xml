@@ -12,7 +12,7 @@
     <artifactId>aio-tests</artifactId>
     <name>AIO Tests</name>
     <description>Plugin to connect your test runs to AIO Tests in Jira</description>
-    <version>${revision}${changelist}</version>
+    <version>${revision}</version>
     <packaging>hpi</packaging>
 
     <licenses>
@@ -33,7 +33,6 @@
 
     <properties>
         <revision>1.0</revision>
-        <changelist>-SNAPSHOT</changelist>
         <jenkins.version>2.235.1</jenkins.version>
         <java.level>8</java.level>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo></properties>

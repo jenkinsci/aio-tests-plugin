@@ -88,8 +88,10 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
                         @NonNull TaskListener taskListener) throws InterruptedException, IOException {
 
         logStartEnd(true, taskListener);
-        if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)) {
-            taskListener.getLogger().println("Mandatory data (frameworkType/ project key / cycle preference / results file path is missing");
+        if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)
+                || this.apiKey == null) {
+            taskListener.getLogger().println("Publishing results failed : " +
+                    "Mandatory data (frameworkType/ project key / cycle preference / results file path / API Key ) is missing.  Please check configuration");
             this.setResultStatus(run, taskListener);
             logStartEnd(false, taskListener);
             return;

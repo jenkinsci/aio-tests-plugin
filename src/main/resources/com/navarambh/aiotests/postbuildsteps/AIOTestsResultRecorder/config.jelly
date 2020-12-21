@@ -9,7 +9,7 @@
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">
-            <f:textbox default="/target/surefire-reports/testng-results.xml" />
+            <f:textbox/>
         </f:entry>
         <f:entry title="Project Key" field="projectKey" >
             <f:textbox />
