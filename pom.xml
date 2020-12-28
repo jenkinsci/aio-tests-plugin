@@ -12,7 +12,7 @@
     <artifactId>aio-tests</artifactId>
     <name>AIO Tests</name>
     <description>Plugin to connect your test runs to AIO Tests in Jira</description>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1</version>
     <packaging>hpi</packaging>
 
     <licenses>
@@ -62,7 +62,7 @@
         <connection>scm:git:git://github.com/${gitHubRepo}.git</connection>
         <developerConnection>scm:git:git@github.com:${gitHubRepo}.git</developerConnection>
         <url>https://github.com/${gitHubRepo}</url>
-        <tag>${scmTag}</tag>
+        <tag>aio-tests-1.1</tag>
     </scm>
 
     <repositories>
