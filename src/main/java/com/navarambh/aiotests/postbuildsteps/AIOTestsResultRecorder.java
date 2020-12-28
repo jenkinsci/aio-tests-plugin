@@ -194,8 +194,12 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
 
 
         public List<Descriptor> getEntryDescriptors() {
-            Jenkins jenkins = Jenkins.getInstanceOrNull();
-            return ImmutableList.of(jenkins.getDescriptor(NewCycle.class), jenkins.getDescriptor(ExistingCycle.class));
+            Jenkins jenkins = Jenkins.get();
+            try {
+                return ImmutableList.of(jenkins.getDescriptor(NewCycle.class), jenkins.getDescriptor(ExistingCycle.class));
+            } catch (Exception e){
+                throw new NullPointerException("Error initializing entry options");
+            }
         }
 
         public FormValidation doCheckProjectKey(@QueryParameter String projectKey)  {
