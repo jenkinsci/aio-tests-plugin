@@ -36,16 +36,18 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private Boolean hideDetails = false;
     private Boolean addCaseToCycle;
     private Boolean createCase;
+    private Boolean bddForceUpdateCase;
     private Secret apiKey;
     private Entry entry;
 
     @DataBoundConstructor
-    public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle, Boolean createCase, Secret apiKey ) {
+    public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle, Boolean createCase, Boolean bddForceUpdateCase, Secret apiKey ) {
         this.frameworkType =frameworkType;
         this.projectKey = projectKey;
         this.resultsFilePath = resultsFilePath;
         this.addCaseToCycle = addCaseToCycle;
         this.createCase = createCase;
+        this.bddForceUpdateCase = bddForceUpdateCase;
         this.apiKey = apiKey;
     }
 
@@ -55,6 +57,10 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public String getResultsFilePath() { return resultsFilePath; }
     public Boolean getAddCaseToCycle() { return addCaseToCycle; }
     public Boolean getCreateCase() { return createCase; }
+
+    public Boolean getBddForceUpdateCase() {
+        return bddForceUpdateCase;
+    }
 
     public Boolean getFailBuildOnFailure() {
         return failBuildOnFailure;
@@ -91,7 +97,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)
                 || this.apiKey == null) {
             taskListener.getLogger().println("Publishing results failed : " +
-                    "Mandatory data (frameworkType/ project key / cycle preference / results file path / API Key ) is missing.  Please check configuration");
+                    "Mandatory data (frameworkType/ project key / cycle preference / results file path / API Token ) is missing.  Please check configuration");
             this.setResultStatus(run, taskListener);
             logStartEnd(false, taskListener);
             return;
@@ -120,7 +126,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.projectKey = (String)this.getParameterizedDataIfAny(buildEnvVars, this.projectKey);
         try {
             AIOCloudClient aioClient = new AIOCloudClient(this.projectKey, this.apiKey);
-            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase,
+            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase,
                     this.hideDetails, f, run, taskListener.getLogger());
         } catch (Exception e) {
             e.printStackTrace();
@@ -218,7 +224,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
 
         public FormValidation doCheckApiKey(@QueryParameter Secret apiKey)  {
             if (StringUtils.isEmpty(apiKey.getPlainText())) {
-                return FormValidation.error("Api Key cannot be empty.");
+                return FormValidation.error("Api Token cannot be empty.");
             }
             return FormValidation.ok();
         }
