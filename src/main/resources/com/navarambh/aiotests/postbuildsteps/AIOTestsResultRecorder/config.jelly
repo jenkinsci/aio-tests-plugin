@@ -6,6 +6,7 @@
             <select name="frameworkType">
                 <option value="testng">TestNG</option>
                 <option value="junit">JUnit</option>
+                <option value="Cucumber">Cucumber</option>
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">
@@ -23,7 +24,10 @@
         <f:entry title="Create case if no key or automation key is found" field="createCase">
             <f:checkbox field="createCase"/>
         </f:entry>
-        <f:entry title="API Key" field="apiKey" >
+        <f:entry title="Update cases with scenario steps [Cucumber Only]" field="bddForceUpdateCase">
+            <f:checkbox field="bddForceUpdateCase"/>
+        </f:entry>
+        <f:entry title="API Token" field="apiKey" >
             <f:password field="apiKey"/>
         </f:entry>
         <f:advanced>

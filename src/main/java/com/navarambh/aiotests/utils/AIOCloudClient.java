@@ -30,12 +30,12 @@ public class AIOCloudClient {
     }
 
     public HttpResponse<String> importResults(String frameworkType, boolean createNewCycle, String testCycleId,
-                                                 boolean addCase, boolean createCase,
+                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase,
                                                 boolean hideDetails,
                                                 File f, Run<?, ?> run, PrintStream logger) {
         String cycleKey;
         if(createNewCycle) {
-            logger.println("Create new cycle with prefix " + testCycleId);
+            logger.println("Creating new cycle with prefix " + testCycleId + " ....");
             HttpResponse<String> response = this.createCycle(testCycleId, run);
             JSONObject responseBody = this.validateResponse(response, "Cycle creation");
             cycleKey = responseBody.getString("key");
@@ -44,13 +44,13 @@ public class AIOCloudClient {
             cycleKey = testCycleId;
         }
         logger.println("Updating results for " + cycleKey);
-        HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, f);
+        HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, f);
         JSONObject responseBody = this.validateResponse(response, "Import results");
-        logResults(responseBody, hideDetails, logger);
+        logResults(frameworkType, responseBody, hideDetails, logger);
         return response;
     }
 
-    private void logResults(JSONObject responseBody, boolean hideDetails, PrintStream logger) {
+    private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger) {
         final int keyColumnLength = 80;
         final int dividerLength = 100;
         if(responseBody != null) {
@@ -60,7 +60,7 @@ public class AIOCloudClient {
             logger.println(StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount"));
             if (!hideDetails) {
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
-                logger.println(StringUtils.rightPad("Key", keyColumnLength) + "Run Status");
+                logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.toLowerCase().equals("cucumber")? "": "Run Status"));
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
                 if(!responseBody.getString("errorCount").equals("0")) {
                     JSONObject errors = responseBody.getJSONObject("errors");
@@ -77,7 +77,7 @@ public class AIOCloudClient {
                     while (caseIterator.hasNext()) {
                         String key = caseIterator.next();
                         logger.println(StringUtils.rightPad(StringUtils.abbreviate(key,keyColumnLength), keyColumnLength)
-                                + processedData.getJSONObject(key).getString("status"));
+                                + (frameworkType.toLowerCase().equals("cucumber") ? "" : processedData.getJSONObject(key).getString("status")));
                     }
                 }
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
@@ -112,7 +112,7 @@ public class AIOCloudClient {
     }
 
     private HttpResponse<String> importResults(String testCycleId, String frameworkType,
-                                                 boolean addCase, boolean createCase,File f) {
+                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase, File f) {
         String uploadEndpoint = getAIOEndpoint(IMPORT_RESULTS_FILE);
         return Unirest.post(uploadEndpoint)
                 .header("Authorization", getAuthKey(this.apiKey.getPlainText()))
@@ -121,7 +121,8 @@ public class AIOCloudClient {
                 .routeParam("testCycleId", testCycleId)
                 .field("file", f)
                 .field("addCaseToCycle", Boolean.toString(addCase))
-                .field("createCase", Boolean.toString(createCase)).asString();
+                .field("createCase", Boolean.toString(createCase))
+                .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase)).asString();
     }
 
     private static String getAIOEndpoint(String url) {
