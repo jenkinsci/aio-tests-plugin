@@ -128,9 +128,12 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             AIOCloudClient aioClient = new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase,
                     this.hideDetails, f, run, taskListener.getLogger());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             taskListener.getLogger().println("Publishing results failed : " + e.getMessage());
+            for (int i = 0; (i < e.getStackTrace().length && i < 6) ; i++) {
+                taskListener.getLogger().println(e.getStackTrace()[i]);
+            }
             this.setResultStatus(run, taskListener);
         }
         logStartEnd(false, taskListener);

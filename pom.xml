@@ -44,6 +44,7 @@
             <groupId>com.konghq</groupId>
             <artifactId>unirest-java</artifactId>
             <version>3.7.02</version>
+            <classifier>standalone</classifier>
         </dependency>
     </dependencies>
     <dependencyManagement>
@@ -77,4 +78,16 @@
             <url>https://repo.jenkins-ci.org/public/</url>
         </pluginRepository>
     </pluginRepositories>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <configuration>
+                    <minimumJavaVersion>1.8</minimumJavaVersion>
+                    <pluginFirstClassLoader>true</pluginFirstClassLoader>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
