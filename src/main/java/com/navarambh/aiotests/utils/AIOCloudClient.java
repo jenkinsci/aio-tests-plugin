@@ -3,9 +3,11 @@ package com.navarambh.aiotests.utils;
 import com.google.gson.JsonObject;
 import hudson.model.Run;
 import hudson.util.Secret;
+import kong.unirest.HttpRequestWithBody;
 import kong.unirest.HttpResponse;
 import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
+import kong.unirest.json.JSONException;
 import kong.unirest.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 
@@ -18,15 +20,29 @@ public class AIOCloudClient {
     private static final String APPLICATION_JSON_UNICODE = "application/json;charset=UTF-8";
     private static final String AIO_TESTS_HOST = "https://tcms.aioreports.com/aio-tcms";
     private static final String API_VERSION = "/api/v1";
+    private static final String SERVER_API_VERSION = "/rest/aio-tcms-api/1.0";
     private static final String AIO_SCHEME = "AioAuth";
     private static final String IMPORT_RESULTS_FILE = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results";
     private static final String CREATE_CYCLE = "/project/{jiraProjectId}/testcycle/detail";
     private String projectId;
     private Secret apiKey;
+    private String jiraServerUrl;
+    private Secret jiraPassword;
+    private String jiraUsername;
 
     public AIOCloudClient(String projectId, Secret apiKey) {
         this.projectId = projectId;
         this.apiKey = apiKey;
+    }
+
+    public AIOCloudClient(String projectId, String jiraServerUrl, String username, Secret jiraPassword) {
+        this.projectId = projectId;
+        this.jiraServerUrl = jiraServerUrl;
+        if(this.jiraServerUrl.endsWith("/")){
+            this.jiraServerUrl = this.jiraServerUrl.substring(0, jiraServerUrl.length() - 1);
+        }
+        this.jiraUsername = username;
+        this.jiraPassword = jiraPassword;
     }
 
     public HttpResponse<String> importResults(String frameworkType, boolean createNewCycle, String testCycleId,
@@ -71,7 +87,7 @@ public class AIOCloudClient {
                                 + errors.getJSONObject(key).getString("message"));
                     }
                 }
-                if(responseBody.get("processedData") != null) {
+                if(this.getKeyValue(responseBody, "processedData", logger) != null) {
                     JSONObject processedData = responseBody.getJSONObject("processedData");
                     Iterator<String> caseIterator = processedData.keys();
                     while (caseIterator.hasNext()) {
@@ -82,6 +98,15 @@ public class AIOCloudClient {
                 }
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
             }
+        }
+    }
+
+    private Object getKeyValue(JSONObject responseBody, String key, PrintStream logger){
+        try {
+            return responseBody.get(key);
+        } catch (JSONException e) {
+            logger.println("Property not found in response " + key);
+            return null;
         }
     }
 
@@ -104,18 +129,14 @@ public class AIOCloudClient {
         jsonObject.addProperty("title",cycleTitle);
         jsonObject.addProperty("objective", objective);
 
-        return Unirest.post(getAIOEndpoint(CREATE_CYCLE))
-                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_UNICODE)
-                .header("Authorization", getAuthKey(this.apiKey.getPlainText()))
+        return this.getHttpRequest(CREATE_CYCLE, true)
                 .routeParam("jiraProjectId", this.projectId)
                 .body(jsonObject).asString();
     }
 
     private HttpResponse<String> importResults(String testCycleId, String frameworkType,
                                                  boolean addCase, boolean createCase, boolean bddForceUpdateCase, File f) {
-        String uploadEndpoint = getAIOEndpoint(IMPORT_RESULTS_FILE);
-        return Unirest.post(uploadEndpoint)
-                .header("Authorization", getAuthKey(this.apiKey.getPlainText()))
+        return this.getHttpRequest(IMPORT_RESULTS_FILE, false)
                 .queryString("type",frameworkType)
                 .routeParam("jiraProjectId", this.projectId)
                 .routeParam("testCycleId", testCycleId)
@@ -125,8 +146,22 @@ public class AIOCloudClient {
                 .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase)).asString();
     }
 
-    private static String getAIOEndpoint(String url) {
-        return AIO_TESTS_HOST + API_VERSION + url;
+    private HttpRequestWithBody getHttpRequest(String url, Boolean isJson) {
+        HttpRequestWithBody requestWithBody = Unirest.post(getAIOEndpoint(url));
+        if(isJson) {   requestWithBody = requestWithBody.header(CONTENT_TYPE_HEADER, APPLICATION_JSON_UNICODE); }
+
+        if(this.apiKey != null){
+            return requestWithBody
+                    .header("Authorization", getAuthKey(this.apiKey.getPlainText()));
+        }
+        if(this.jiraServerUrl != null){
+            return requestWithBody.basicAuth(this.jiraUsername, this.jiraPassword.getPlainText());
+        }
+        throw new AIOTestsAuthorizationException();
+    }
+    private String getAIOEndpoint(String url) {
+        String base = this.apiKey != null? AIO_TESTS_HOST + API_VERSION : this.jiraServerUrl + SERVER_API_VERSION ;
+        return base + url;
     }
 
     private static String getAuthKey(String apiKey) {
