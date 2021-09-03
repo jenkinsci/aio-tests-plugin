@@ -25,6 +25,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 
 public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep {
@@ -32,6 +33,10 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private String frameworkType;
     private String resultsFilePath;
     private String projectKey;
+    private String jiraInstanceType = "cloud";
+    private String jiraServerUrl;
+    private String jiraUsername;
+    private Secret jiraPassword;
     private Boolean failBuildOnFailure = false;
     private Boolean hideDetails = false;
     private Boolean addCaseToCycle;
@@ -57,14 +62,33 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public String getResultsFilePath() { return resultsFilePath; }
     public Boolean getAddCaseToCycle() { return addCaseToCycle; }
     public Boolean getCreateCase() { return createCase; }
+    public Boolean getBddForceUpdateCase() { return bddForceUpdateCase; }
+    public Boolean getFailBuildOnFailure() { return failBuildOnFailure; }
 
-    public Boolean getBddForceUpdateCase() {
-        return bddForceUpdateCase;
+    public String getJiraUsername() { return jiraUsername; }
+    @DataBoundSetter
+    public void setJiraUsername(String jiraUsername) { this.jiraUsername = jiraUsername; }
+
+    public String getJiraServerUrl() { return jiraServerUrl; }
+    @DataBoundSetter
+    public void setJiraServerUrl(String jiraServerUrl) { this.jiraServerUrl = jiraServerUrl; }
+
+    public Secret getJiraPassword() { return jiraPassword; }
+    @DataBoundSetter
+    public void setJiraPassword(Secret jiraPassword) { this.jiraPassword = jiraPassword; }
+
+    @DataBoundSetter
+    public void setFrameworkType(String frameworkType) { this.frameworkType = frameworkType; }
+
+    public String getJiraInstanceType() { return jiraInstanceType; }
+
+    @DataBoundSetter
+    public void setJiraInstanceType(String jiraInstanceType) {
+        if(this.jiraInstanceType != null) {
+            this.jiraInstanceType = jiraInstanceType;
+        }
     }
 
-    public Boolean getFailBuildOnFailure() {
-        return failBuildOnFailure;
-    }
     @DataBoundSetter
     public void setFailBuildOnFailure(boolean failBuildOnFailure) {
         this.failBuildOnFailure = failBuildOnFailure;
@@ -89,23 +113,41 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         return (DescriptorImpl) super.getDescriptor();
     }
 
+    public String isServer() {
+        return this.jiraInstanceType !=null && this.jiraInstanceType.equalsIgnoreCase("server") ? "true" : "false";
+    }
+
+    public String isFramework(String fmwk) {
+        return this.frameworkType != null && this.frameworkType.trim().toLowerCase().equals(fmwk)? "true" : "false";
+    }
+
     @Override
     public void perform(@NonNull Run<?, ?> run, @NonNull FilePath filePath, @NonNull Launcher launcher,
                         @NonNull TaskListener taskListener) throws InterruptedException, IOException {
 
         logStartEnd(true, taskListener);
-        if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)
-                || this.apiKey == null) {
+        if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)) {
             taskListener.getLogger().println("Publishing results failed : " +
-                    "Mandatory data (frameworkType/ project key / cycle preference / results file path / API Token ) is missing.  Please check configuration");
+                    "Mandatory data (framework type/ project key / cycle preference / results file path ) is missing.  Please check configuration");
             this.setResultStatus(run, taskListener);
             logStartEnd(false, taskListener);
             return;
         }
+        if((Boolean.parseBoolean(this.isServer()) && (StringUtils.isEmpty(this.jiraServerUrl) || StringUtils.isEmpty(this.jiraUsername) || this.jiraPassword == null))
+         || (!Boolean.parseBoolean(this.isServer()) && (this.apiKey == null || this.apiKey.getPlainText().isEmpty()))){
+            taskListener.getLogger().println("Publishing results failed : " +
+                    "Mandatory data ( " + (Boolean.parseBoolean(this.isServer())? "Jira URL/Username/Password":"API Token") + " ) is missing.  Please validate authorization information.");
+            this.setResultStatus(run, taskListener);
+            logStartEnd(false, taskListener);
+            return;
+        }
+
+        taskListener.getLogger().println("Jira Hosting : " + this.jiraInstanceType + (Boolean.parseBoolean(this.isServer())? " - " + this.jiraServerUrl : ""));
         taskListener.getLogger().println("Framework Type: " + this.frameworkType);
         EnvVars buildEnvVars = this.setupEnvVars(run, taskListener);
         this.resultsFilePath = (String)this.getParameterizedDataIfAny(buildEnvVars, this.resultsFilePath);
         taskListener.getLogger().println("File Path: " + this.resultsFilePath);
+
         //Fetch file
         File f = FileUtils.getFile(filePath.getRemote(), this.resultsFilePath);
         if(f == null) {
@@ -121,11 +163,14 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
 
         //Get parametrized data
 
-        this.checkIfAPIKeyIsParametrized(buildEnvVars);
+        if(Boolean.parseBoolean(this.isServer())) { this.checkIfPasswordIsParametrized(buildEnvVars); }
+        else { this.checkIfAPIKeyIsParametrized(buildEnvVars); }
+
         cycleData = (String)this.getParameterizedDataIfAny(buildEnvVars, cycleData);
         this.projectKey = (String)this.getParameterizedDataIfAny(buildEnvVars, this.projectKey);
         try {
-            AIOCloudClient aioClient = new AIOCloudClient(this.projectKey, this.apiKey);
+            AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
+                    new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase,
                     this.hideDetails, f, run, taskListener.getLogger());
         } catch (Throwable e) {
@@ -152,9 +197,18 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         taskListener.getLogger().println(StringUtils.leftPad("",110,"*"));
         taskListener.getLogger().println(StringUtils.leftPad(start? startLog : startLog + " end.",start? 70 : 74));
         taskListener.getLogger().println(StringUtils.leftPad("",110,"*"));
+
     }
 
     public static abstract class Entry extends AbstractDescribableImpl<Entry> {}
+
+    private void checkIfPasswordIsParametrized(EnvVars buildEnvVars) {
+        String passwordValue = this.getJiraPassword().getPlainText();
+        String parametrizedValue = (String) this.getParameterizedDataIfAny(buildEnvVars, passwordValue);
+        if(!passwordValue.equals(parametrizedValue)) {
+            this.jiraPassword = Secret.fromString(parametrizedValue);
+        }
+    }
 
     private void checkIfAPIKeyIsParametrized(EnvVars buildEnvVars) {
         String apiKeyValue = this.getApiKey().getPlainText();
@@ -209,6 +263,19 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             } catch (Exception e){
                 throw new NullPointerException("Error initializing entry options");
             }
+        }
+
+        public FormValidation doCheckJiraServerUrl(@QueryParameter String jiraServerUrl)  {
+            if (StringUtils.isEmpty(jiraServerUrl)) {
+                return FormValidation.error("*Required");
+            }
+            try {
+                URL u = new URL(jiraServerUrl); // this would check for the protocol
+                u.toURI();
+            } catch (Exception e) {
+                return FormValidation.error("Please specify a valid Jira server URL");
+            }
+            return FormValidation.ok();
         }
 
         public FormValidation doCheckProjectKey(@QueryParameter String projectKey)  {
