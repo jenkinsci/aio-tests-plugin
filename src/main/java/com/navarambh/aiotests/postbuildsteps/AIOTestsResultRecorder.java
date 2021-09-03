@@ -16,7 +16,6 @@ import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
-import jenkins.org.apache.commons.validator.routines.UrlValidator;
 import jenkins.tasks.SimpleBuildStep;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.Symbol;
@@ -26,6 +25,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 
 public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep {
@@ -269,7 +269,10 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             if (StringUtils.isEmpty(jiraServerUrl)) {
                 return FormValidation.error("*Required");
             }
-            if(!UrlValidator.getInstance().isValid(jiraServerUrl)){
+            try {
+                URL u = new URL(jiraServerUrl); // this would check for the protocol
+                u.toURI();
+            } catch (Exception e) {
                 return FormValidation.error("Please specify a valid Jira server URL");
             }
             return FormValidation.ok();
