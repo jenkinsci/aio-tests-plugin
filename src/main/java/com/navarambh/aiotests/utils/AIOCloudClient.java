@@ -14,6 +14,7 @@ import org.apache.commons.lang.StringUtils;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.Iterator;
+import java.util.List;
 
 public class AIOCloudClient {
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
@@ -45,11 +46,12 @@ public class AIOCloudClient {
         this.jiraPassword = jiraPassword;
     }
 
-    public HttpResponse<String> importResults(String frameworkType, boolean createNewCycle, String testCycleId,
-                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase,
-                                                boolean hideDetails,
-                                                File f, Run<?, ?> run, PrintStream logger) {
+    public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
+                                              boolean addCase, boolean createCase, boolean bddForceUpdateCase,
+                                              boolean hideDetails,
+                                              List<File> resultFiles, Run<?, ?> run, PrintStream logger) {
         String cycleKey;
+        logger.println("Result files " + resultFiles.size());
         if(createNewCycle) {
             logger.println("Creating new cycle with prefix " + testCycleId + " ....");
             HttpResponse<String> response = this.createCycle(testCycleId, run);
@@ -60,10 +62,14 @@ public class AIOCloudClient {
             cycleKey = testCycleId;
         }
         logger.println("Updating results for " + cycleKey);
-        HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, f);
-        JSONObject responseBody = this.validateResponse(response, "Import results");
-        logResults(frameworkType, responseBody, hideDetails, logger);
-        return response;
+        for (File resultFile : resultFiles) {
+            logger.print(StringUtils.rightPad("", 5, "*"));
+            logger.print("File Name: " + resultFile.getName());
+            logger.println(StringUtils.rightPad("", 5, "*"));
+            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, resultFile);
+            JSONObject responseBody = this.validateResponse(response, "Import results");
+            logResults(frameworkType, responseBody, hideDetails, logger);
+        }
     }
 
     private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger) {

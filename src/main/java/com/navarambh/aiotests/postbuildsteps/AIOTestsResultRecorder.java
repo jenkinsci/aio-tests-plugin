@@ -148,9 +148,8 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.resultsFilePath = (String)this.getParameterizedDataIfAny(buildEnvVars, this.resultsFilePath);
         taskListener.getLogger().println("File Path: " + this.resultsFilePath);
 
-        //Fetch file
-        File f = FileUtils.getFile(filePath.getRemote(), this.resultsFilePath);
-        if(f == null) {
+        List<File> f = FileUtils.getFiles(filePath, this.resultsFilePath, run, this.frameworkType.toLowerCase(), taskListener.getLogger());
+        if(f.size() == 0) {
             taskListener.getLogger().println("File not found @ " + this.resultsFilePath);
             this.setResultStatus(run, taskListener);
             logStartEnd(false, taskListener);
@@ -173,6 +172,9 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase,
                     this.hideDetails, f, run, taskListener.getLogger());
+            if(filePath.isRemote()) {
+                FileUtils.deleteFile(f, taskListener.getLogger());
+            }
         } catch (Throwable e) {
             e.printStackTrace();
             taskListener.getLogger().println("Publishing results failed : " + e.getMessage());
@@ -218,7 +220,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
     }
 
-    public EnvVars setupEnvVars(Run run, TaskListener taskListener) {
+    private EnvVars setupEnvVars(Run run, TaskListener taskListener) {
         EnvVars buildEnvVars;
         try {
             buildEnvVars = run.getEnvironment(taskListener);
@@ -251,6 +253,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
 
         @Override
+        @NonNull
         public String getDisplayName() {
             return "Publish results to AIO Tests - Jira";
         }
@@ -261,7 +264,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             try {
                 return ImmutableList.of(jenkins.getDescriptor(NewCycle.class), jenkins.getDescriptor(ExistingCycle.class));
             } catch (Exception e){
-                throw new NullPointerException("Error initializing entry options");
+                throw new RuntimeException("Error initializing entry options");
             }
         }
 
@@ -315,7 +318,9 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
 
         @Extension public static class DescriptorImpl extends Descriptor<Entry> {
 
-            @Override public String getDisplayName() {
+            @Override
+            @NonNull
+            public String getDisplayName() {
                 return "Use an existing cycle";
             }
 
@@ -341,7 +346,9 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
 
         @Extension public static class DescriptorImpl extends Descriptor<Entry> {
-            @Override public String getDisplayName() {
+            @Override
+            @NonNull
+            public String getDisplayName() {
                 return "Create new cycle for each job run";
             }
 
