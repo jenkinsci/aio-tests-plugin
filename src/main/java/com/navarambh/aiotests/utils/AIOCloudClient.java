@@ -48,7 +48,7 @@ public class AIOCloudClient {
 
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
                                               boolean addCase, boolean createCase, boolean bddForceUpdateCase,
-                                              boolean hideDetails,
+                                              boolean createNewRun, boolean hideDetails,
                                               List<File> resultFiles, Run<?, ?> run, PrintStream logger) {
         String cycleKey;
         logger.println("Result files " + resultFiles.size());
@@ -66,7 +66,7 @@ public class AIOCloudClient {
             logger.print(StringUtils.rightPad("", 5, "*"));
             logger.print("File Name: " + resultFile.getName());
             logger.println(StringUtils.rightPad("", 5, "*"));
-            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, resultFile);
+            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile);
             JSONObject responseBody = this.validateResponse(response, "Import results");
             logResults(frameworkType, responseBody, hideDetails, logger);
         }
@@ -141,7 +141,7 @@ public class AIOCloudClient {
     }
 
     private HttpResponse<String> importResults(String testCycleId, String frameworkType,
-                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase, File f) {
+                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase, boolean createNewRun, File f) {
         return this.getHttpRequest(IMPORT_RESULTS_FILE, false)
                 .queryString("type",frameworkType)
                 .routeParam("jiraProjectId", this.projectId)
@@ -149,6 +149,7 @@ public class AIOCloudClient {
                 .field("file", f)
                 .field("addCaseToCycle", Boolean.toString(addCase))
                 .field("createCase", Boolean.toString(createCase))
+                .field("createNewRun", Boolean.toString(createNewRun))
                 .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase)).asString();
     }
 

@@ -23,6 +23,7 @@
                 <option value="testng" selected="${instance.frameworkType.equals('testng')? 'true':null}">TestNG</option>
                 <option value="junit" selected="${instance.frameworkType.equals('junit')? 'true':null}">JUnit</option>
                 <option value="cucumber" selected="${instance.frameworkType.equals('cucumber')? 'true':null}">Cucumber</option>
+                <option value="nunit" selected="${instance.frameworkType.equals('nunit')? 'true':null}">NUnit</option>
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">
@@ -33,6 +34,9 @@
         </f:entry>
         <f:entry title="Cycle Preferences">
             <f:hetero-radio field="entry" descriptors="${descriptor.entryDescriptors}"/>
+        </f:entry>
+        <f:entry title="Create New run for each case run" field="createNewRun">
+            <f:checkbox field="createNewRun" default="true"/>
         </f:entry>
         <f:entry title="Add cases if not in Cycle?" field="addCaseToCycle">
             <f:checkbox field="addCaseToCycle"/>

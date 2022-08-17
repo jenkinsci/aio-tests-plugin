@@ -42,17 +42,20 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private Boolean addCaseToCycle;
     private Boolean createCase;
     private Boolean bddForceUpdateCase;
+    private Boolean createNewRun;
     private Secret apiKey;
     private Entry entry;
 
     @DataBoundConstructor
-    public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle, Boolean createCase, Boolean bddForceUpdateCase, Secret apiKey ) {
+    public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle,
+                                  Boolean createCase, Boolean bddForceUpdateCase, Boolean createNewRun, Secret apiKey ) {
         this.frameworkType =frameworkType;
         this.projectKey = projectKey;
         this.resultsFilePath = resultsFilePath;
         this.addCaseToCycle = addCaseToCycle;
         this.createCase = createCase;
         this.bddForceUpdateCase = bddForceUpdateCase;
+        this.createNewRun = createNewRun;
         this.apiKey = apiKey;
     }
 
@@ -63,6 +66,14 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public Boolean getAddCaseToCycle() { return addCaseToCycle; }
     public Boolean getCreateCase() { return createCase; }
     public Boolean getBddForceUpdateCase() { return bddForceUpdateCase; }
+    public Boolean isCreateNewRun() {
+        if(createNewRun == null) {
+            this.createNewRun = true;
+            return true;
+        }
+        return createNewRun;
+    }
+
     public Boolean getFailBuildOnFailure() { return failBuildOnFailure; }
 
     public String getJiraUsername() { return jiraUsername; }
@@ -126,6 +137,9 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
                         @NonNull TaskListener taskListener) throws InterruptedException, IOException {
 
         logStartEnd(true, taskListener);
+        if(this.createNewRun == null) {
+            this.createNewRun = true;
+        }
         if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)) {
             taskListener.getLogger().println("Publishing results failed : " +
                     "Mandatory data (framework type/ project key / cycle preference / results file path ) is missing.  Please check configuration");
@@ -170,7 +184,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         try {
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
-            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase,
+            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun,
                     this.hideDetails, f, run, taskListener.getLogger());
             if(filePath.isRemote()) {
                 FileUtils.deleteFile(f, taskListener.getLogger());
