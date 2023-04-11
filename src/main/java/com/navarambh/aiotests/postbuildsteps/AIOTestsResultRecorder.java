@@ -185,7 +185,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun,
-                    this.hideDetails, f, run, taskListener.getLogger());
+                    this.hideDetails, f, run, this.entry instanceof NewCycle? ((NewCycle) this.entry) : null, taskListener.getLogger());
             if(filePath.isRemote()) {
                 FileUtils.deleteFile(f, taskListener.getLogger());
             }
@@ -350,14 +350,20 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public static final class NewCycle extends Entry {
 
         private final String cyclePrefix;
+        private final String cycleFolder;
+        private final String cycleTasks;
 
-        @DataBoundConstructor public NewCycle(String cyclePrefix) {
+        @DataBoundConstructor public NewCycle(String cyclePrefix, String cycleFolder, String cycleTasks) {
             this.cyclePrefix = cyclePrefix;
+            this.cycleFolder = cycleFolder;
+            this.cycleTasks = cycleTasks;
         }
 
         public String getCyclePrefix() {
             return cyclePrefix;
         }
+        public String getCycleFolder() {return cycleFolder;}
+        public String getCycleTasks() {return cycleTasks;}
 
         @Extension public static class DescriptorImpl extends Descriptor<Entry> {
             @Override

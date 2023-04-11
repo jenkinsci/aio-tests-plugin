@@ -24,6 +24,7 @@
                 <option value="junit" selected="${instance.frameworkType.equals('junit')? 'true':null}">JUnit</option>
                 <option value="cucumber" selected="${instance.frameworkType.equals('cucumber')? 'true':null}">Cucumber</option>
                 <option value="nunit" selected="${instance.frameworkType.equals('nunit')? 'true':null}">NUnit</option>
+                <option value="newman" selected="${instance.frameworkType.equals('newman')? 'true':null}">Newman</option>
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">

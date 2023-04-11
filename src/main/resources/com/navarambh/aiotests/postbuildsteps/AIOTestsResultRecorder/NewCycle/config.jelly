@@ -4,4 +4,10 @@
     <f:entry field="cyclePrefix" title="Cycle Title Prefix">
         <f:textbox/>
     </f:entry>
+    <f:entry field="cycleFolder" title="Cycle Folder Hierarchy">
+        <f:textbox/>
+    </f:entry>
+    <f:entry field="cycleTasks" title="Tasks">
+        <f:textbox/>
+    </f:entry>
 </j:jelly>
