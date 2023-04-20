@@ -60,8 +60,10 @@ public class AIOCloudClient {
         String cycleKey;
         logger.println("Result files " + resultFiles.size());
         if(createNewCycle) {
-            logger.println("Creating new cycle with prefix " + testCycleId +
-                    (StringUtils.isNotBlank(newCycleInfo.getCycleFolder())? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....");
+            logger.println("Creating new cycle with prefix " + testCycleId);
+            if(newCycleInfo != null) {
+                logger.println((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....");
+            }
             Number folderId = this.createOrGetFolder(newCycleInfo);
             HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null? null: newCycleInfo.getCycleTasks(), folderId);
             try {
