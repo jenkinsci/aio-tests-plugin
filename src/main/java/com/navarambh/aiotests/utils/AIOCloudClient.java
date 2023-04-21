@@ -1,6 +1,8 @@
 package com.navarambh.aiotests.utils;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.navarambh.aiotests.postbuildsteps.AIOTestsResultRecorder;
 import hudson.model.Run;
 import hudson.util.Secret;
 import kong.unirest.HttpRequestWithBody;
@@ -25,11 +27,16 @@ public class AIOCloudClient {
     private static final String AIO_SCHEME = "AioAuth";
     private static final String IMPORT_RESULTS_FILE = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results";
     private static final String CREATE_CYCLE = "/project/{jiraProjectId}/testcycle/detail";
+    private static final String GET_OR_CREATE_CYCLE_FOLDER = "/project/{jiraProjectId}/testcycle/folder/hierarchy";
     private String projectId;
     private Secret apiKey;
     private String jiraServerUrl;
     private Secret jiraPassword;
     private String jiraUsername;
+
+    static {
+        Unirest.config().socketTimeout(150*1000);
+    }
 
     public AIOCloudClient(String projectId, Secret apiKey) {
         this.projectId = projectId;
@@ -47,17 +54,26 @@ public class AIOCloudClient {
     }
 
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
-                                              boolean addCase, boolean createCase, boolean bddForceUpdateCase,
-                                              boolean createNewRun, boolean hideDetails,
-                                              List<File> resultFiles, Run<?, ?> run, PrintStream logger) {
+                              boolean addCase, boolean createCase, boolean bddForceUpdateCase,
+                              boolean createNewRun, boolean hideDetails,
+                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger) {
         String cycleKey;
         logger.println("Result files " + resultFiles.size());
         if(createNewCycle) {
-            logger.println("Creating new cycle with prefix " + testCycleId + " ....");
-            HttpResponse<String> response = this.createCycle(testCycleId, run);
-            JSONObject responseBody = this.validateResponse(response, "Cycle creation");
-            cycleKey = responseBody.getString("key");
-            logger.println("Cycle created successfully " + cycleKey);
+            logger.println("Creating new cycle with prefix " + testCycleId);
+            if(newCycleInfo != null) {
+                logger.println((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....");
+            }
+            Number folderId = this.createOrGetFolder(newCycleInfo);
+            HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null? null: newCycleInfo.getCycleTasks(), folderId);
+            try {
+                JSONObject responseBody = this.validateResponse(response, "Cycle creation");
+                cycleKey = responseBody.getString("key");
+                logger.println("Cycle created successfully " + cycleKey);
+            } catch (Exception e) {
+                logger.println("Error in cycle creation " + e.getMessage());
+                return;
+            }
         } else {
             cycleKey = testCycleId;
         }
@@ -72,6 +88,29 @@ public class AIOCloudClient {
         }
     }
 
+    private Number createOrGetFolder(AIOTestsResultRecorder.NewCycle newCycleInfo) {
+        if(newCycleInfo != null && StringUtils.isNotBlank(newCycleInfo.getCycleFolder())) {
+            JsonObject jsonObject = new JsonObject();
+            JsonArray j = new JsonArray();
+            String[] folderNames = newCycleInfo.getCycleFolder().split(",");
+            for (String folderName : folderNames) {
+                if (StringUtils.isNotBlank(folderName)) {
+                    j.add(folderName.trim());
+                }
+            }
+            jsonObject.add("folderHierarchy", j);
+
+            HttpResponse response = this.putHttpRequest(GET_OR_CREATE_CYCLE_FOLDER)
+                    .routeParam("jiraProjectId", this.projectId)
+                    .body(jsonObject).asString();
+            if(response != null && response.isSuccess()) {
+                JSONObject responseBody = this.validateResponse(response, "Fetching or creating folder");
+                return responseBody.getNumber("ID");
+            }
+        }
+        return null;
+    }
+
     private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger) {
         final int keyColumnLength = 80;
         final int dividerLength = 100;
@@ -82,7 +121,7 @@ public class AIOCloudClient {
             logger.println(StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount"));
             if (!hideDetails) {
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
-                logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.toLowerCase().equals("cucumber")? "": "Run Status"));
+                logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.equalsIgnoreCase("cucumber")? "": "Run Status"));
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
                 if(!responseBody.getString("errorCount").equals("0")) {
                     JSONObject errors = responseBody.getJSONObject("errors");
@@ -99,7 +138,7 @@ public class AIOCloudClient {
                     while (caseIterator.hasNext()) {
                         String key = caseIterator.next();
                         logger.println(StringUtils.rightPad(StringUtils.abbreviate(key,keyColumnLength), keyColumnLength)
-                                + (frameworkType.toLowerCase().equals("cucumber") ? "" : processedData.getJSONObject(key).getString("status")));
+                                + (frameworkType.equalsIgnoreCase("cucumber") ? "" : processedData.getJSONObject(key).getString("status")));
                     }
                 }
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
@@ -128,12 +167,27 @@ public class AIOCloudClient {
         }
     }
 
-    private HttpResponse<String> createCycle(String cyclePrefix, Run run) {
+    private HttpResponse<String> createCycle(String cyclePrefix, Run run, String cycleTasks, Number folderID) {
         String objective = "Created by automation run " + run.toString() ;
-        String cycleTitle = cyclePrefix + " - " + run.getTime().toString();
+        String cycleTitle = cyclePrefix + " - " + run.getTime();
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("title",cycleTitle);
         jsonObject.addProperty("objective", objective);
+        if(folderID != null) {
+            JsonObject folderObject = new JsonObject();
+            folderObject.addProperty("ID",folderID);
+            jsonObject.add("folder", folderObject);
+        }
+        if(StringUtils.isNotBlank(cycleTasks)) {
+            JsonArray j = new JsonArray();
+            String[] taskIds = cycleTasks.split(",");
+            for (String taskId : taskIds) {
+                if (StringUtils.isNotBlank(taskId)) {
+                    j.add(taskId.trim());
+                }
+            }
+            jsonObject.add("jiraTaskIDs", j);
+        }
 
         return this.getHttpRequest(CREATE_CYCLE, true)
                 .routeParam("jiraProjectId", this.projectId)
@@ -153,8 +207,12 @@ public class AIOCloudClient {
                 .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase)).asString();
     }
 
-    private HttpRequestWithBody getHttpRequest(String url, Boolean isJson) {
-        HttpRequestWithBody requestWithBody = Unirest.post(getAIOEndpoint(url));
+    private HttpRequestWithBody putHttpRequest(String url) {
+        HttpRequestWithBody requestWithBody = Unirest.put(getAIOEndpoint(url));
+        return getHttpRequestWithBody(true, requestWithBody);
+    }
+
+    private HttpRequestWithBody getHttpRequestWithBody(Boolean isJson, HttpRequestWithBody requestWithBody) {
         if(isJson) {   requestWithBody = requestWithBody.header(CONTENT_TYPE_HEADER, APPLICATION_JSON_UNICODE); }
 
         if(this.apiKey != null){
@@ -166,6 +224,12 @@ public class AIOCloudClient {
         }
         throw new AIOTestsAuthorizationException();
     }
+
+    private HttpRequestWithBody getHttpRequest(String url, Boolean isJson) {
+        HttpRequestWithBody requestWithBody = Unirest.post(getAIOEndpoint(url));
+        return getHttpRequestWithBody(isJson, requestWithBody);
+    }
+
     private String getAIOEndpoint(String url) {
         String base = this.apiKey != null? AIO_TESTS_HOST + API_VERSION : this.jiraServerUrl + SERVER_API_VERSION ;
         return base + url;
