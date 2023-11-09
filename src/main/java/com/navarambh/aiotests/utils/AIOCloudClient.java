@@ -21,7 +21,7 @@ import java.util.List;
 public class AIOCloudClient {
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON_UNICODE = "application/json;charset=UTF-8";
-    private static final String AIO_TESTS_HOST = "https://tcms.aioreports.com/aio-tcms";
+    private static final String AIO_TESTS_HOST = "https://tcms.aiojiraapps.com/aio-tcms";
     private static final String API_VERSION = "/api/v1";
     private static final String SERVER_API_VERSION = "/rest/aio-tcms-api/1.0";
     private static final String AIO_SCHEME = "AioAuth";
