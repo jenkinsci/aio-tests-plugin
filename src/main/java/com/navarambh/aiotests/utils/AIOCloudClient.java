@@ -138,7 +138,8 @@ public class AIOCloudClient {
                     while (caseIterator.hasNext()) {
                         String key = caseIterator.next();
                         logger.println(StringUtils.rightPad(StringUtils.abbreviate(key,keyColumnLength), keyColumnLength)
-                                + (frameworkType.equalsIgnoreCase("cucumber") ? "" : processedData.getJSONObject(key).getString("status")));
+                                + (frameworkType.equalsIgnoreCase("cucumber") || frameworkType.equalsIgnoreCase("newman")?
+                                "" : processedData.getJSONObject(key).getString("status")));
                     }
                 }
                 logger.println(StringUtils.rightPad("", dividerLength, "-"));
