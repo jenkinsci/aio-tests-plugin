@@ -45,10 +45,12 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private Boolean createNewRun;
     private Secret apiKey;
     private Entry entry;
+    private Boolean forceUpdateCase = false;
+    private Boolean isBatch = false;
 
     @DataBoundConstructor
     public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle,
-                                  Boolean createCase, Boolean bddForceUpdateCase, Boolean createNewRun, Secret apiKey ) {
+                                  Boolean createCase, Boolean bddForceUpdateCase,Boolean forceUpdateCase,Boolean isBatch,Boolean createNewRun, Secret apiKey ) {
         this.frameworkType =frameworkType;
         this.projectKey = projectKey;
         this.resultsFilePath = resultsFilePath;
@@ -57,6 +59,8 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.bddForceUpdateCase = bddForceUpdateCase;
         this.createNewRun = createNewRun;
         this.apiKey = apiKey;
+        this.forceUpdateCase = forceUpdateCase;
+        this.isBatch = isBatch;
     }
 
     public String getProjectKey() { return projectKey; }
@@ -66,6 +70,8 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public Boolean getAddCaseToCycle() { return addCaseToCycle; }
     public Boolean getCreateCase() { return createCase; }
     public Boolean getBddForceUpdateCase() { return bddForceUpdateCase; }
+    public Boolean getForceUpdateCase() { return forceUpdateCase; }
+    public Boolean getIsBatch() { return isBatch; }
     public Boolean isCreateNewRun() {
         if(createNewRun == null) {
             this.createNewRun = true;
@@ -184,7 +190,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         try {
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
-            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun,
+            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun, this.forceUpdateCase,this.isBatch,
                     this.hideDetails, f, run, this.entry instanceof NewCycle? ((NewCycle) this.entry) : null, taskListener.getLogger());
             if(filePath.isRemote()) {
                 FileUtils.deleteFile(f, taskListener.getLogger());

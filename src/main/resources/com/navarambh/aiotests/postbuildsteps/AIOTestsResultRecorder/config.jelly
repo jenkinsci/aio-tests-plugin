@@ -18,6 +18,9 @@
                 <f:password field="apiKey"/>
             </f:entry>
         </f:radioBlock>
+        <f:entry title="Report results as a batch" field="isBatch">
+                <f:checkbox field="isBatch" default="false"/>
+        </f:entry>
         <f:entry title="Framework" field="frameworkType">
             <select name="frameworkType">
                 <option value="testng" selected="${instance.frameworkType.equals('testng')? 'true':null}">TestNG</option>
@@ -25,6 +28,7 @@
                 <option value="cucumber" selected="${instance.frameworkType.equals('cucumber')? 'true':null}">Cucumber</option>
                 <option value="nunit" selected="${instance.frameworkType.equals('nunit')? 'true':null}">NUnit</option>
                 <option value="newman" selected="${instance.frameworkType.equals('newman')? 'true':null}">Newman</option>
+                <option value="robot" selected="${instance.frameworkType.equals('robot')? 'true':null}">Robot</option>
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">
@@ -47,6 +51,9 @@
         </f:entry>
         <f:entry title="Update cases with scenario steps [Cucumber Only]" field="bddForceUpdateCase">
             <f:checkbox field="bddForceUpdateCase"/>
+        </f:entry>
+        <f:entry title="Force Update cases including steps" field="forceUpdateCase">
+            <f:checkbox field="forceUpdateCase" default="false"/>
         </f:entry>
         <f:advanced>
             <f:entry title="Hide publish response details" field="hideDetails">
