@@ -15,6 +15,7 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class AIOCloudClient {
     private static final String SERVER_API_VERSION = "/rest/aio-tcms-api/1.0";
     private static final String AIO_SCHEME = "AioAuth";
     private static final String IMPORT_RESULTS_FILE = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results";
+    private static final String IMPORT_RESULTS_FILE_BATCH = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results/batch";
     private static final String CREATE_CYCLE = "/project/{jiraProjectId}/testcycle/detail";
     private static final String GET_OR_CREATE_CYCLE_FOLDER = "/project/{jiraProjectId}/testcycle/folder/hierarchy";
     private String projectId;
@@ -55,7 +57,7 @@ public class AIOCloudClient {
 
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
                               boolean addCase, boolean createCase, boolean bddForceUpdateCase,
-                              boolean createNewRun, boolean hideDetails,
+                              boolean createNewRun, boolean forceUpdateCase, boolean isBatch, boolean hideDetails,
                               List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger) {
         String cycleKey;
         logger.println("Result files " + resultFiles.size());
@@ -78,13 +80,16 @@ public class AIOCloudClient {
             cycleKey = testCycleId;
         }
         logger.println("Updating results for " + cycleKey);
+        if(isBatch) {
+            logger.println("Batch results can be viewed in Batches tab of " + cycleKey);
+        }
         for (File resultFile : resultFiles) {
             logger.print(StringUtils.rightPad("", 5, "*"));
             logger.print("File Name: " + resultFile.getName());
             logger.println(StringUtils.rightPad("", 5, "*"));
-            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile);
+            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile, forceUpdateCase, isBatch);
             JSONObject responseBody = this.validateResponse(response, "Import results");
-            logResults(frameworkType, responseBody, hideDetails, logger);
+            logResults(frameworkType, responseBody, hideDetails, logger, isBatch);
         }
     }
 
@@ -111,38 +116,54 @@ public class AIOCloudClient {
         return null;
     }
 
-    private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger) {
+    private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger, boolean isBatch) {
         final int keyColumnLength = 80;
         final int dividerLength = 100;
         if(responseBody != null) {
-            logger.println(StringUtils.rightPad("Status:", 30) + responseBody.getString("status"));
-            logger.println(StringUtils.rightPad("Total Runs:", 30) + responseBody.getString("requestCount"));
-            logger.println(StringUtils.rightPad("Successfully updated:", 30) + responseBody.getString("successCount"));
-            logger.println(StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount"));
-            if (!hideDetails) {
-                logger.println(StringUtils.rightPad("", dividerLength, "-"));
-                logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.equalsIgnoreCase("cucumber")? "": "Run Status"));
-                logger.println(StringUtils.rightPad("", dividerLength, "-"));
-                if(!responseBody.getString("errorCount").equals("0")) {
-                    JSONObject errors = responseBody.getJSONObject("errors");
-                    Iterator<String> caseIterator = errors.keys();
-                    while (caseIterator.hasNext()) {
-                        String key = caseIterator.next();
-                        logger.println(StringUtils.rightPad(StringUtils.abbreviate(key,keyColumnLength), keyColumnLength)
-                                + errors.getJSONObject(key).getString("message"));
-                    }
+            if(isBatch){
+                logger.println(StringUtils.rightPad("Batch Id:", 30) + responseBody.getString("batchId"));
+                String fileSize = responseBody.getString("size");
+                if(StringUtils.isNotBlank(fileSize)) {
+                    BigDecimal a = new BigDecimal(fileSize);
+                    BigDecimal roundOff = a.divide(new BigDecimal(1000)).setScale(2, BigDecimal.ROUND_HALF_EVEN);
+                    logger.println(StringUtils.rightPad("File Size:", 30) + roundOff + " kb");
+                } else {
+                    logger.println(StringUtils.rightPad("File Size:", 30) + "0");
                 }
-                if(this.getKeyValue(responseBody, "processedData", logger) != null) {
-                    JSONObject processedData = responseBody.getJSONObject("processedData");
-                    Iterator<String> caseIterator = processedData.keys();
-                    while (caseIterator.hasNext()) {
-                        String key = caseIterator.next();
-                        logger.println(StringUtils.rightPad(StringUtils.abbreviate(key,keyColumnLength), keyColumnLength)
-                                + (frameworkType.equalsIgnoreCase("cucumber") || frameworkType.equalsIgnoreCase("newman")?
-                                "" : processedData.getJSONObject(key).getString("status")));
-                    }
+                if(responseBody.get("errorMsg") != null){
+                    logger.println(StringUtils.rightPad("Error Msg:", 30) + responseBody.get("errorMsg"));
                 }
-                logger.println(StringUtils.rightPad("", dividerLength, "-"));
+            }
+            else {
+                logger.println(StringUtils.rightPad("Status:", 30) + responseBody.getString("status"));
+                logger.println(StringUtils.rightPad("Total Runs:", 30) + responseBody.getString("requestCount"));
+                logger.println(StringUtils.rightPad("Successfully updated:", 30) + responseBody.getString("successCount"));
+                logger.println(StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount"));
+                if (!hideDetails) {
+                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
+                    logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.equalsIgnoreCase("cucumber") ? "" : "Run Status"));
+                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
+                    if (!responseBody.getString("errorCount").equals("0")) {
+                        JSONObject errors = responseBody.getJSONObject("errors");
+                        Iterator<String> caseIterator = errors.keys();
+                        while (caseIterator.hasNext()) {
+                            String key = caseIterator.next();
+                            logger.println(StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
+                                    + errors.getJSONObject(key).getString("message"));
+                        }
+                    }
+                    if (this.getKeyValue(responseBody, "processedData", logger) != null) {
+                        JSONObject processedData = responseBody.getJSONObject("processedData");
+                        Iterator<String> caseIterator = processedData.keys();
+                        while (caseIterator.hasNext()) {
+                            String key = caseIterator.next();
+                            logger.println(StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
+                                    + (frameworkType.equalsIgnoreCase("cucumber") || frameworkType.equalsIgnoreCase("newman") ?
+                                    "" : processedData.getJSONObject(key).getString("status")));
+                        }
+                    }
+                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
+                }
             }
         }
     }
@@ -196,8 +217,8 @@ public class AIOCloudClient {
     }
 
     private HttpResponse<String> importResults(String testCycleId, String frameworkType,
-                                                 boolean addCase, boolean createCase, boolean bddForceUpdateCase, boolean createNewRun, File f) {
-        return this.getHttpRequest(IMPORT_RESULTS_FILE, false)
+                                               boolean addCase, boolean createCase, boolean bddForceUpdateCase, boolean createNewRun, File f, boolean forceUpdateCase, boolean isBatch) {
+        return this.getHttpRequest(isBatch ? IMPORT_RESULTS_FILE_BATCH : IMPORT_RESULTS_FILE, false)
                 .queryString("type",frameworkType)
                 .routeParam("jiraProjectId", this.projectId)
                 .routeParam("testCycleId", testCycleId)
@@ -205,7 +226,9 @@ public class AIOCloudClient {
                 .field("addCaseToCycle", Boolean.toString(addCase))
                 .field("createCase", Boolean.toString(createCase))
                 .field("createNewRun", Boolean.toString(createNewRun))
-                .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase)).asString();
+                .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase))
+                .field("forceUpdateCase", Boolean.toString(forceUpdateCase))
+                .asString();
     }
 
     private HttpRequestWithBody putHttpRequest(String url) {
