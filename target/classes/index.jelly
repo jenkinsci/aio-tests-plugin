@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+    Publish your test results to AIO Tests - Jira as a post build action from Jenkins
+</div>

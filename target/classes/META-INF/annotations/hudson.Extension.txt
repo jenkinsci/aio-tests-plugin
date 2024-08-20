@@ -1,0 +1,4 @@
+# informational; use java -jar sezpoz.jar to see authoritative contents
+com.navarambh.aiotests.postbuildsteps.AIOTestsResultRecorder$DescriptorImpl
+com.navarambh.aiotests.postbuildsteps.AIOTestsResultRecorder$ExistingCycle$DescriptorImpl
+com.navarambh.aiotests.postbuildsteps.AIOTestsResultRecorder$NewCycle$DescriptorImpl

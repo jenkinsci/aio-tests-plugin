@@ -1,0 +1,23 @@
+Manifest-Version: 1.0
+Built-By: gitpod
+Created-By: Apache Maven
+Build-Jdk: 11.0.24
+Extension-Name: aio-tests
+Specification-Title: Plugin to connect your test runs to AIO Tests in 
+ Jira
+Implementation-Title: aio-tests
+Implementation-Version: 1.12-SNAPSHOT
+Group-Id: io.jenkins.plugins
+Short-Name: aio-tests
+Long-Name: AIO Tests
+Url: https://github.com/jenkinsci/aio-tests-plugin
+Minimum-Java-Version: 1.8
+Plugin-Version: 1.12-SNAPSHOT (private-b56040ac-gitpod)
+Hudson-Version: 2.289.2
+Jenkins-Version: 2.289.2
+PluginFirstClassLoader: true
+Plugin-Developers: AIO Tests Support:aiosupport:
+Plugin-License-Name: Apache License 2.0
+Plugin-License-Url: https://www.apache.org/licenses/LICENSE-2.0
+Plugin-ScmUrl: https://github.com/jenkinsci/aio-tests-plugin
+

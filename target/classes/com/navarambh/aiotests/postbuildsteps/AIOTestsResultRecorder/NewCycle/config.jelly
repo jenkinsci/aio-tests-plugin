@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:entry field="cyclePrefix" title="Cycle Title Prefix">
+        <f:textbox/>
+    </f:entry>
+    <f:entry field="cycleFolder" title="Cycle Folder Hierarchy">
+        <f:textbox/>
+    </f:entry>
+    <f:entry field="cycleTasks" title="Tasks">
+        <f:textbox/>
+    </f:entry>
+</j:jelly>

@@ -1,0 +1,6 @@
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/src/main/java/com/navarambh/aiotests/postbuildsteps/AIOTestsResultRecorder.java
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/src/main/java/com/navarambh/aiotests/utils/AIOTestsException.java
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/src/main/java/com/navarambh/aiotests/utils/FileUtils.java
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/target/generated-sources/localizer/com/navarambh/aiotests/Messages.java
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/src/main/java/com/navarambh/aiotests/utils/AIOTestsAuthorizationException.java
+/workspace/plugin-modernizer-tool/test-plugins/aio-tests/src/main/java/com/navarambh/aiotests/utils/AIOCloudClient.java
