@@ -177,21 +177,40 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
 
         //Set cycle preferences
-        boolean createNewCycle = this.entry instanceof NewCycle;
-        String cycleData = this.entry instanceof NewCycle? ((NewCycle) this.entry).getCyclePrefix() : ((ExistingCycle) this.entry).getCycleKey();
+        boolean createNewCycle = false;
+        boolean createIfAbsent = false;
+        String cycleData = "";
+
+        NewCycle newCycle = null;
+        ExistingCycle existingCycle = null;
+        CreateIfCycleAbsent createIfCycleAbsent = null;
+
+        if(this.entry instanceof ExistingCycle) {
+            existingCycle = (ExistingCycle)this.entry;
+            cycleData = existingCycle.getCycleKey();
+        }else if (this.entry instanceof NewCycle) {
+            createNewCycle = true;
+            newCycle = (NewCycle)this.entry;
+            cycleData = newCycle.getCyclePrefix();
+        }else{
+            createIfAbsent = true;
+            createIfCycleAbsent = (CreateIfCycleAbsent)this.entry;
+            cycleData = createIfCycleAbsent.getCycleName();
+        }
 
         //Get parametrized data
 
         if(Boolean.parseBoolean(this.isServer())) { this.checkIfPasswordIsParametrized(buildEnvVars); }
         else { this.checkIfAPIKeyIsParametrized(buildEnvVars); }
 
-        cycleData = (String)this.getParameterizedDataIfAny(buildEnvVars, cycleData);
-        this.projectKey = (String)this.getParameterizedDataIfAny(buildEnvVars, this.projectKey);
+        cycleData = ((String)this.getParameterizedDataIfAny(buildEnvVars, cycleData)).trim();
+
+        this.projectKey = ((String)this.getParameterizedDataIfAny(buildEnvVars, this.projectKey)).trim();
         try {
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
-            aioClient.importResults( this.frameworkType, createNewCycle, cycleData, this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun, this.forceUpdateCase,this.isBatch,
-                    this.hideDetails, f, run, this.entry instanceof NewCycle? ((NewCycle) this.entry) : null, taskListener.getLogger());
+            aioClient.importResults( this.frameworkType, createNewCycle, cycleData , this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun, this.forceUpdateCase,this.isBatch,
+                    this.hideDetails, f, run, newCycle,taskListener.getLogger(), createIfAbsent);
             if(filePath.isRemote()) {
                 FileUtils.deleteFile(f, taskListener.getLogger());
             }
@@ -282,7 +301,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         public List<Descriptor> getEntryDescriptors() {
             Jenkins jenkins = Jenkins.get();
             try {
-                return ImmutableList.of(jenkins.getDescriptor(NewCycle.class), jenkins.getDescriptor(ExistingCycle.class));
+                return ImmutableList.of(jenkins.getDescriptor(NewCycle.class), jenkins.getDescriptor(ExistingCycle.class), jenkins.getDescriptor(CreateIfCycleAbsent.class));
             } catch (Exception e){
                 throw new RuntimeException("Error initializing entry options");
             }
@@ -384,6 +403,35 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
                 }
                 return FormValidation.ok();
             }
+        }
+    }
+
+    public static final class CreateIfCycleAbsent extends Entry {
+
+        private final String cycleName;
+
+        public String getCycleName() {return cycleName;}
+
+        @DataBoundConstructor
+        public CreateIfCycleAbsent(String cycleName) {
+            this.cycleName = cycleName;
+        }
+
+        @Extension public static class DescriptorImpl extends Descriptor<Entry> {
+
+            @Override
+            @NonNull
+            public String getDisplayName() {
+                return "Create cycle if absent.";
+            }
+
+            public FormValidation doCheckCycleName(@QueryParameter String cycleName)  {
+                if (StringUtils.isEmpty(cycleName)) {
+                    return FormValidation.error("*Cycle Name cannot be empty.");
+                }
+                return FormValidation.ok();
+            }
+
         }
 
     }

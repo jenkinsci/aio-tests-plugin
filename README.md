@@ -45,16 +45,17 @@ has been generated, the AIO Tests plugin can be used as below to report results 
 6. Specify the API Key generated from AIO Tests in Jira.  Please refer [Generating API Key](https://aioreports.atlassian.net/wiki/spaces/ATDoc/pages/484048912/Access+Token)
 for more information
 
-| Field                                 | Details                                                                                         |
-|---------------------------------------|-------------------------------------------------------------------------------------------------|
-| Cycle Preference                      | Select between existing and new cycle                                                           |
-| Cycle Prefix                          | In case of new cycle, Cycle prefix will be used to prefix the cycle title                       |
-| Cycle Key                             | If existing cycle is selected, AIO Tests cycle key eg. SCRUM-CY-121                             |
-| Add Case                              | If checked, cases not already in cycle are added, else the cases are reported as errors         |
-| Create New Run                        | If checked, new run is created for each case execution, else existing run is overwritten        |
-| Create Case                           | If checked and no case exists with a matching case key or automation key, a new case is created |
-| Hide Publish Result Details           | If checked, it would hide testcase wise details                                                 |
-| Fail build if result publishing fails | If checked, the build result will be updated to failed, in case publishing results fails        |
+| Field                                 | Details                                                                                          |
+|---------------------------------------|--------------------------------------------------------------------------------------------------|
+| Cycle Preference                      | Select between existing, new cycle or search for an existing cycle by name and create if not found |
+| Cycle Prefix                          | In case of new cycle, Cycle prefix will be used to prefix the cycle title                        |
+| Cycle Key                             | If existing cycle is selected, AIO Tests cycle key eg. SCRUM-CY-121                              |
+| Cycle Name                            | If Create if absent cycle is selected, name of cycle to search or to create in its absence       |
+| Add Case                              | If checked, cases not already in cycle are added, else the cases are reported as errors          |
+| Create New Run                        | If checked, new run is created for each case execution, else existing run is overwritten         |
+| Create Case                           | If checked and no case exists with a matching case key or automation key, a new case is created  |
+| Hide Publish Result Details           | If checked, it would hide testcase wise details                                                  |
+| Fail build if result publishing fails | If checked, the build result will be updated to failed, in case publishing results fails         |
 
 ### Reporting results in pipeline
 
@@ -87,6 +88,7 @@ pipeline {
                          createCase :true,
                          entry: [$class: 'NewCycle', cyclePrefix: 'Regression Run V1.0'],
                         //For existing cycles : entry: [$class: 'ExistingCycle', cycleKey: 'SCRUM-CY-191'],
+                        //For createIfabsent cycles : entry: [$class: 'CreateIfCycleAbsent', cycleName: 'Regression Release Alpha'],
                          apiKey : hudson.util.Secret.fromString(env.AIO_TESTS_API_KEY),
                          resultsFilePath : '/target/surefire-reports/testng-results.xml',
                          projectKey: 'SCRUM',

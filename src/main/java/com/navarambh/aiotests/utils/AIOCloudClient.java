@@ -9,6 +9,7 @@ import kong.unirest.HttpRequestWithBody;
 import kong.unirest.HttpResponse;
 import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
+import kong.unirest.json.JSONArray;
 import kong.unirest.json.JSONException;
 import kong.unirest.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -29,6 +30,7 @@ public class AIOCloudClient {
     private static final String IMPORT_RESULTS_FILE = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results";
     private static final String IMPORT_RESULTS_FILE_BATCH = "/project/{jiraProjectId}/testcycle/{testCycleId}/import/results/batch";
     private static final String CREATE_CYCLE = "/project/{jiraProjectId}/testcycle/detail";
+    private static final String SEARCH_CYCLE = "/project/{jiraProjectId}/testcycle/search";
     private static final String GET_OR_CREATE_CYCLE_FOLDER = "/project/{jiraProjectId}/testcycle/folder/hierarchy";
     private String projectId;
     private Secret apiKey;
@@ -58,16 +60,16 @@ public class AIOCloudClient {
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
                               boolean addCase, boolean createCase, boolean bddForceUpdateCase,
                               boolean createNewRun, boolean forceUpdateCase, boolean isBatch, boolean hideDetails,
-                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger) {
+                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger, boolean createIfAbsent) {
         String cycleKey;
         logger.println("Result files " + resultFiles.size());
-        if(createNewCycle) {
+        if (createNewCycle) {
             logger.println("Creating new cycle with prefix " + testCycleId);
-            if(newCycleInfo != null) {
+            if (newCycleInfo != null) {
                 logger.println((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....");
             }
             Number folderId = this.createOrGetFolder(newCycleInfo);
-            HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null? null: newCycleInfo.getCycleTasks(), folderId);
+            HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null ? null : newCycleInfo.getCycleTasks(), folderId, true);
             try {
                 JSONObject responseBody = this.validateResponse(response, "Cycle creation");
                 cycleKey = responseBody.getString("key");
@@ -76,11 +78,38 @@ public class AIOCloudClient {
                 logger.println("Error in cycle creation " + e.getMessage());
                 return;
             }
+        } else if (createIfAbsent) {
+            logger.println("Looking for cycle with title :  " + testCycleId);
+            HttpResponse<String> response = this.findCycleFromName(testCycleId);
+            if (response != null && response.isSuccess()) {
+                JSONObject responseBody = this.validateResponse(response, "Fetching cycle");
+                JSONArray items = responseBody.getJSONArray("items");
+                if (items != null && items.length() > 0) {
+                    cycleKey = items.getJSONObject(0).getString("key");
+                } else {
+                    logger.println("Cycle " + testCycleId + " not found");
+                    logger.println("Creating new cycle with prefix " + testCycleId);
+                    HttpResponse<String> createCycleResponse = this.createCycle(testCycleId, run, null, null, false);
+                    try {
+                        JSONObject createCycleResponseBody = this.validateResponse(createCycleResponse, "Cycle creation");
+                        cycleKey = createCycleResponseBody.getString("key");
+                        logger.println("Cycle created successfully " + cycleKey);
+                    } catch (Exception e) {
+                        logger.println("Error in cycle creation " + e.getMessage());
+                        return;
+                    }
+
+                }
+            } else {
+                logger.println("Error in cycle search " + response);
+                return;
+            }
+
         } else {
             cycleKey = testCycleId;
         }
         logger.println("Updating results for " + cycleKey);
-        if(isBatch) {
+        if (isBatch) {
             logger.println("Batch results can be viewed in Batches tab of " + cycleKey);
         }
         for (File resultFile : resultFiles) {
@@ -189,9 +218,23 @@ public class AIOCloudClient {
         }
     }
 
-    private HttpResponse<String> createCycle(String cyclePrefix, Run run, String cycleTasks, Number folderID) {
+    private HttpResponse<String> findCycleFromName(String cycleName){
+        JsonObject jsonObject = new JsonObject();
+        JsonObject titleObject = new JsonObject();
+        titleObject.addProperty("value", cycleName);
+        titleObject.addProperty("comparisonType", "EXACT_MATCH");
+        jsonObject.add("title", titleObject);
+        return this.getHttpRequest(SEARCH_CYCLE, true)
+                .routeParam("jiraProjectId", this.projectId)
+                .body(jsonObject).asString();
+    }
+
+    private HttpResponse<String> createCycle(String cyclePrefix, Run run, String cycleTasks, Number folderID, boolean useTime) {
         String objective = "Created by automation run " + run.toString() ;
-        String cycleTitle = cyclePrefix + " - " + run.getTime();
+        String cycleTitle = cyclePrefix;
+        if(useTime){
+            cycleTitle += " - " + run.getTime();
+        }
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("title",cycleTitle);
         jsonObject.addProperty("objective", objective);
