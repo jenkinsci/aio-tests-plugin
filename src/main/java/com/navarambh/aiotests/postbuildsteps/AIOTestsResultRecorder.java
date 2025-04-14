@@ -25,6 +25,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.List;
 
@@ -45,12 +46,13 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private Boolean createNewRun;
     private Secret apiKey;
     private Entry entry;
-    private Boolean forceUpdateCase = false;
-    private Boolean isBatch = false;
+    private Boolean forceUpdateCase;
+    private Boolean isBatch;
+    private Boolean createLogReport = false;
 
     @DataBoundConstructor
     public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle,
-                                  Boolean createCase, Boolean bddForceUpdateCase,Boolean forceUpdateCase,Boolean isBatch,Boolean createNewRun, Secret apiKey ) {
+                                  Boolean createCase, Boolean bddForceUpdateCase, Boolean forceUpdateCase, Boolean isBatch, Boolean createNewRun, Boolean createLogReport , Secret apiKey ) {
         this.frameworkType =frameworkType;
         this.projectKey = projectKey;
         this.resultsFilePath = resultsFilePath;
@@ -61,6 +63,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.apiKey = apiKey;
         this.forceUpdateCase = forceUpdateCase;
         this.isBatch = isBatch;
+        this.createLogReport = createLogReport;
     }
 
     public String getProjectKey() { return projectKey; }
@@ -115,6 +118,14 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     @DataBoundSetter
     public void setHideDetails(boolean hideDetails) { this.hideDetails = hideDetails; }
 
+    public Boolean getCreateLogReport() {
+        return createLogReport;
+    }
+    @DataBoundSetter
+    public void setCreateLogReport(Boolean createLogReport) {
+        this.createLogReport = createLogReport;
+    }
+
     @DataBoundSetter
     public void setEntry(Entry entry) { this.entry = entry;}
     public Entry getEntry() {
@@ -141,38 +152,42 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     @Override
     public void perform(@NonNull Run<?, ?> run, @NonNull FilePath filePath, @NonNull Launcher launcher,
                         @NonNull TaskListener taskListener) throws InterruptedException, IOException {
+        StringBuilder reportText = null;
+        setNewValuesForOldJobs();
+        if(this.createLogReport){
+            reportText=  new StringBuilder();
+        }
 
-        logStartEnd(true, taskListener);
+        logStartEnd(true, taskListener, reportText);
         if(this.createNewRun == null) {
             this.createNewRun = true;
         }
         if(StringUtils.isEmpty(this.frameworkType) || StringUtils.isEmpty(this.projectKey) || this.entry == null || StringUtils.isEmpty(this.resultsFilePath)) {
-            taskListener.getLogger().println("Publishing results failed : " +
-                    "Mandatory data (framework type/ project key / cycle preference / results file path ) is missing.  Please check configuration");
-            this.setResultStatus(run, taskListener);
-            logStartEnd(false, taskListener);
+            aioLogger("Publishing results failed : " +
+                    "Mandatory data (framework type/ project key / cycle preference / results file path ) is missing.  Please check configuration",taskListener.getLogger(), reportText);
+            this.setResultStatus(run, taskListener, reportText);
+            logStartEnd(false, taskListener, reportText);
             return;
         }
-        if((Boolean.parseBoolean(this.isServer()) && (StringUtils.isEmpty(this.jiraServerUrl) || StringUtils.isEmpty(this.jiraUsername) || this.jiraPassword == null))
-         || (!Boolean.parseBoolean(this.isServer()) && (this.apiKey == null || this.apiKey.getPlainText().isEmpty()))){
-            taskListener.getLogger().println("Publishing results failed : " +
-                    "Mandatory data ( " + (Boolean.parseBoolean(this.isServer())? "Jira URL/Username/Password":"API Token") + " ) is missing.  Please validate authorization information.");
-            this.setResultStatus(run, taskListener);
-            logStartEnd(false, taskListener);
+        if ((Boolean.parseBoolean(this.isServer()) && (StringUtils.isEmpty(this.jiraServerUrl) || StringUtils.isEmpty(this.jiraUsername) || this.jiraPassword == null))
+                || (!Boolean.parseBoolean(this.isServer()) && (this.apiKey == null || this.apiKey.getPlainText().isEmpty()))) {
+            aioLogger("Publishing results failed : " +
+                    "Mandatory data ( " + (Boolean.parseBoolean(this.isServer()) ? "Jira URL/Username/Password" : "API Token") + " ) is missing.  Please validate authorization information.", taskListener.getLogger() ,reportText);
+            this.setResultStatus(run, taskListener, reportText);
+            logStartEnd(false, taskListener, reportText);
             return;
         }
-
-        taskListener.getLogger().println("Jira Hosting : " + this.jiraInstanceType + (Boolean.parseBoolean(this.isServer())? " - " + this.jiraServerUrl : ""));
-        taskListener.getLogger().println("Framework Type: " + this.frameworkType);
-        EnvVars buildEnvVars = this.setupEnvVars(run, taskListener);
+        aioLogger("Jira Hosting : " + this.jiraInstanceType + (Boolean.parseBoolean(this.isServer())? " - " + this.jiraServerUrl : ""),taskListener.getLogger() ,reportText);
+        aioLogger("Framework Type: " + this.frameworkType,taskListener.getLogger() ,reportText);
+        EnvVars buildEnvVars = this.setupEnvVars(run, taskListener, reportText);
         this.resultsFilePath = (String)this.getParameterizedDataIfAny(buildEnvVars, this.resultsFilePath);
-        taskListener.getLogger().println("File Path: " + this.resultsFilePath);
+        aioLogger("File Path: " + this.resultsFilePath,taskListener.getLogger(), reportText);
 
-        List<File> f = FileUtils.getFiles(filePath, this.resultsFilePath, run, this.frameworkType.toLowerCase(), taskListener.getLogger());
+        List<File> f = FileUtils.getFiles(filePath, this.resultsFilePath, run, this.frameworkType.toLowerCase(), taskListener.getLogger(), reportText);
         if(f.size() == 0) {
-            taskListener.getLogger().println("File not found @ " + this.resultsFilePath);
-            this.setResultStatus(run, taskListener);
-            logStartEnd(false, taskListener);
+            aioLogger("File not found @ " + this.resultsFilePath,taskListener.getLogger(),reportText);
+            this.setResultStatus(run, taskListener, reportText);
+            logStartEnd(false, taskListener, reportText);
             return;
         }
 
@@ -210,35 +225,63 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData , this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun, this.forceUpdateCase,this.isBatch,
-                    this.hideDetails, f, run, newCycle,taskListener.getLogger(), createIfAbsent);
+                    this.hideDetails, f, run, newCycle,taskListener.getLogger(), createIfAbsent, reportText);
             if(filePath.isRemote()) {
-                FileUtils.deleteFile(f, taskListener.getLogger());
+                FileUtils.deleteFile(f, taskListener.getLogger(), reportText);
             }
         } catch (Throwable e) {
             e.printStackTrace();
-            taskListener.getLogger().println("Publishing results failed : " + e.getMessage());
+            aioLogger("Publishing results failed : " + e.getMessage(),taskListener.getLogger(),reportText);
             for (int i = 0; (i < e.getStackTrace().length && i < 6) ; i++) {
-                taskListener.getLogger().println(e.getStackTrace()[i]);
+                aioLogger(e.getStackTrace()[i].toString(),taskListener.getLogger(),reportText);
             }
-            this.setResultStatus(run, taskListener);
+            this.setResultStatus(run, taskListener,reportText);
         }
-        logStartEnd(false, taskListener);
+        logStartEnd(false, taskListener, reportText);
+        if(this.createLogReport){
+            run.addAction(new LogReportAction(reportText.toString()));
+            taskListener.getLogger().println("AIO Tests logs has been generated in the AIO Tests file.");
+        }
 
     }
 
-    private  void setResultStatus(Run run, TaskListener taskListener) {
+    /**
+     * When new fields are introduced, old jobs that are already saved, the values come as null.
+     * No matter what the default value is set, it is not picked up by Jenkins.
+     * Explicitly setting default status to avoid NPEs and correct values.
+     */
+    private void setNewValuesForOldJobs() {
+        if(this.createLogReport == null) {
+            this.createLogReport = false;
+        }
+        if(this.forceUpdateCase == null) {
+            this.forceUpdateCase = false;
+        }
+        if(this.isBatch == null) {
+            this.isBatch = false;
+        }
+    }
+
+    private  void setResultStatus(Run run, TaskListener taskListener, StringBuilder reportText) {
         if(failBuildOnFailure) {
-            taskListener.getLogger().println("Publish results to AIO Tests : Marking build as failed.");
+            aioLogger("Publish results to AIO Tests : Marking build as failed.",taskListener.getLogger(), reportText);
             run.setResult(Result.FAILURE);
         }
     }
 
-    private static void logStartEnd(boolean start, TaskListener taskListener) {
+    private static void logStartEnd(boolean start, TaskListener taskListener, StringBuilder reportText) {
         String startLog = "AIO Tests : Publishing results";
-        taskListener.getLogger().println(StringUtils.leftPad("",110,"*"));
-        taskListener.getLogger().println(StringUtils.leftPad(start? startLog : startLog + " end.",start? 70 : 74));
-        taskListener.getLogger().println(StringUtils.leftPad("",110,"*"));
+        aioLogger(StringUtils.leftPad("",110,"*"),taskListener.getLogger(), reportText);
+        aioLogger(StringUtils.leftPad(start? startLog : startLog + " end.",start? 70 : 74),taskListener.getLogger(), reportText);
+        aioLogger(StringUtils.leftPad("",110,"*"),taskListener.getLogger(), reportText);
+    }
 
+    public static void aioLogger(String message, PrintStream logger, StringBuilder reportText) {
+        if (reportText != null)  {
+            reportText.append(message).append("\n");
+        } else {
+            logger.println(message);
+        }
     }
 
     public static abstract class Entry extends AbstractDescribableImpl<Entry> {}
@@ -259,13 +302,13 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
     }
 
-    private EnvVars setupEnvVars(Run run, TaskListener taskListener) {
+    private EnvVars setupEnvVars(Run run, TaskListener taskListener, StringBuilder reportText) {
         EnvVars buildEnvVars;
         try {
             buildEnvVars = run.getEnvironment(taskListener);
             return buildEnvVars;
         }      catch(Exception e) {
-            taskListener.getLogger().println("Error retrieving environment variables: " + e.getMessage());
+            aioLogger("Error retrieving environment variables: " + e.getMessage(), taskListener.getLogger(), reportText);
         }
         return null;
     }

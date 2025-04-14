@@ -60,26 +60,26 @@ public class AIOCloudClient {
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
                               boolean addCase, boolean createCase, boolean bddForceUpdateCase,
                               boolean createNewRun, boolean forceUpdateCase, boolean isBatch, boolean hideDetails,
-                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger, boolean createIfAbsent) {
-        String cycleKey;
-        logger.println("Result files " + resultFiles.size());
+                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger, boolean createIfAbsent, StringBuilder reportText) {
+        String cycleKey = null;
+        AIOTestsResultRecorder.aioLogger("Result files " + resultFiles.size(), logger, reportText);
         if (createNewCycle) {
-            logger.println("Creating new cycle with prefix " + testCycleId);
+            AIOTestsResultRecorder.aioLogger("Creating new cycle with prefix " + testCycleId, logger, reportText);
             if (newCycleInfo != null) {
-                logger.println((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....");
+                AIOTestsResultRecorder.aioLogger((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....", logger, reportText);
             }
             Number folderId = this.createOrGetFolder(newCycleInfo);
             HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null ? null : newCycleInfo.getCycleTasks(), folderId, true);
             try {
                 JSONObject responseBody = this.validateResponse(response, "Cycle creation");
                 cycleKey = responseBody.getString("key");
-                logger.println("Cycle created successfully " + cycleKey);
+                AIOTestsResultRecorder.aioLogger("Cycle created successfully " + cycleKey, logger, reportText);
             } catch (Exception e) {
-                logger.println("Error in cycle creation " + e.getMessage());
+                AIOTestsResultRecorder.aioLogger("Error in cycle creation " + e.getMessage(), logger, reportText);
                 return;
             }
         } else if (createIfAbsent) {
-            logger.println("Looking for cycle with title :  " + testCycleId);
+            AIOTestsResultRecorder.aioLogger("Looking for cycle with title :  " + testCycleId, logger, reportText);
             HttpResponse<String> response = this.findCycleFromName(testCycleId);
             if (response != null && response.isSuccess()) {
                 JSONObject responseBody = this.validateResponse(response, "Fetching cycle");
@@ -87,38 +87,36 @@ public class AIOCloudClient {
                 if (items != null && items.length() > 0) {
                     cycleKey = items.getJSONObject(0).getString("key");
                 } else {
-                    logger.println("Cycle " + testCycleId + " not found");
-                    logger.println("Creating new cycle with prefix " + testCycleId);
+                    AIOTestsResultRecorder.aioLogger("Cycle " + testCycleId + " not found", logger, reportText);
+                    AIOTestsResultRecorder.aioLogger("Creating new cycle with prefix " + testCycleId, logger, reportText);
                     HttpResponse<String> createCycleResponse = this.createCycle(testCycleId, run, null, null, false);
                     try {
                         JSONObject createCycleResponseBody = this.validateResponse(createCycleResponse, "Cycle creation");
                         cycleKey = createCycleResponseBody.getString("key");
-                        logger.println("Cycle created successfully " + cycleKey);
+                        AIOTestsResultRecorder.aioLogger("Cycle created successfully " + cycleKey, logger, reportText);
                     } catch (Exception e) {
-                        logger.println("Error in cycle creation " + e.getMessage());
+                        AIOTestsResultRecorder.aioLogger("Error in cycle creation " + e.getMessage(), logger, reportText);
                         return;
                     }
 
                 }
             } else {
-                logger.println("Error in cycle search " + response);
+                AIOTestsResultRecorder.aioLogger("Error in cycle search " + response, logger, reportText);
                 return;
             }
 
         } else {
             cycleKey = testCycleId;
         }
-        logger.println("Updating results for " + cycleKey);
+        AIOTestsResultRecorder.aioLogger("Updating results for " + cycleKey, logger, reportText);
         if (isBatch) {
-            logger.println("Batch results can be viewed in Batches tab of " + cycleKey);
+            AIOTestsResultRecorder.aioLogger("Batch results can be viewed in Batches tab of " + cycleKey, logger, reportText);
         }
         for (File resultFile : resultFiles) {
-            logger.print(StringUtils.rightPad("", 5, "*"));
-            logger.print("File Name: " + resultFile.getName());
-            logger.println(StringUtils.rightPad("", 5, "*"));
+            AIOTestsResultRecorder.aioLogger(StringUtils.rightPad("", 5, "*") + "File Name: " + resultFile.getName() + StringUtils.rightPad("", 5, "*"), logger, reportText);
             HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile, forceUpdateCase, isBatch);
             JSONObject responseBody = this.validateResponse(response, "Import results");
-            logResults(frameworkType, responseBody, hideDetails, logger, isBatch);
+            logResults(frameworkType, responseBody, hideDetails, logger, isBatch, reportText);
         }
     }
 
@@ -145,63 +143,63 @@ public class AIOCloudClient {
         return null;
     }
 
-    private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger, boolean isBatch) {
+    private void logResults(String frameworkType, JSONObject responseBody, boolean hideDetails, PrintStream logger, boolean isBatch, StringBuilder reportText) {
         final int keyColumnLength = 80;
         final int dividerLength = 100;
         if(responseBody != null) {
             if(isBatch){
-                logger.println(StringUtils.rightPad("Batch Id:", 30) + responseBody.getString("batchId"));
+                AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Batch Id:", 30) + responseBody.getString("batchId")), logger, reportText);
                 String fileSize = responseBody.getString("size");
                 if(StringUtils.isNotBlank(fileSize)) {
                     BigDecimal a = new BigDecimal(fileSize);
                     BigDecimal roundOff = a.divide(new BigDecimal(1000)).setScale(2, BigDecimal.ROUND_HALF_EVEN);
-                    logger.println(StringUtils.rightPad("File Size:", 30) + roundOff + " kb");
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("File Size:", 30) + roundOff + " kb"), logger, reportText);
                 } else {
-                    logger.println(StringUtils.rightPad("File Size:", 30) + "0");
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("File Size:", 30) + "0"), logger, reportText);
                 }
                 if(responseBody.get("errorMsg") != null){
-                    logger.println(StringUtils.rightPad("Error Msg:", 30) + responseBody.get("errorMsg"));
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Error Msg:", 30) + responseBody.get("errorMsg")), logger, reportText);
                 }
             }
             else {
-                logger.println(StringUtils.rightPad("Status:", 30) + responseBody.getString("status"));
-                logger.println(StringUtils.rightPad("Total Runs:", 30) + responseBody.getString("requestCount"));
-                logger.println(StringUtils.rightPad("Successfully updated:", 30) + responseBody.getString("successCount"));
-                logger.println(StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount"));
+                AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Status:", 30) + responseBody.getString("status")), logger, reportText);
+                AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Total Runs:", 30) + responseBody.getString("requestCount")), logger, reportText);
+                AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Successfully updated:", 30) + responseBody.getString("successCount")), logger, reportText);
+                AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Errors:", 30) + responseBody.getString("errorCount")), logger, reportText);
                 if (!hideDetails) {
-                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
-                    logger.println(StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.equalsIgnoreCase("cucumber") ? "" : "Run Status"));
-                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("", dividerLength, "-")), logger, reportText);
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Key", keyColumnLength) + (frameworkType.equalsIgnoreCase("cucumber") ? "" : "Run Status")), logger, reportText);
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("", dividerLength, "-")), logger, reportText);
                     if (!responseBody.getString("errorCount").equals("0")) {
                         JSONObject errors = responseBody.getJSONObject("errors");
                         Iterator<String> caseIterator = errors.keys();
                         while (caseIterator.hasNext()) {
                             String key = caseIterator.next();
-                            logger.println(StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
-                                    + errors.getJSONObject(key).getString("message"));
+                            AIOTestsResultRecorder.aioLogger((StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
+                                    + errors.getJSONObject(key).getString("message")), logger, reportText);
                         }
                     }
-                    if (this.getKeyValue(responseBody, "processedData", logger) != null) {
+                    if (this.getKeyValue(responseBody, "processedData", logger, reportText) != null) {
                         JSONObject processedData = responseBody.getJSONObject("processedData");
                         Iterator<String> caseIterator = processedData.keys();
                         while (caseIterator.hasNext()) {
                             String key = caseIterator.next();
-                            logger.println(StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
+                            AIOTestsResultRecorder.aioLogger((StringUtils.rightPad(StringUtils.abbreviate(key, keyColumnLength), keyColumnLength)
                                     + (frameworkType.equalsIgnoreCase("cucumber") || frameworkType.equalsIgnoreCase("newman") ?
-                                    "" : processedData.getJSONObject(key).getString("status")));
+                                    "" : processedData.getJSONObject(key).getString("status"))), logger, reportText);
                         }
                     }
-                    logger.println(StringUtils.rightPad("", dividerLength, "-"));
+                    AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("", dividerLength, "-")), logger, reportText);
                 }
             }
         }
     }
 
-    private Object getKeyValue(JSONObject responseBody, String key, PrintStream logger){
+    private Object getKeyValue(JSONObject responseBody, String key, PrintStream logger, StringBuilder reportText){
         try {
             return responseBody.get(key);
         } catch (JSONException e) {
-            logger.println("Property not found in response " + key);
+            AIOTestsResultRecorder.aioLogger(("Property not found in response " + key), logger, reportText);
             return null;
         }
     }
