@@ -62,6 +62,9 @@
             <f:entry title="Fail build if result publishing fails" field="failBuildOnFailure">
                 <f:checkbox field="failBuildOnFailure" />
             </f:entry>
+            <f:entry title="Show AIO Tests logs on a separate tab" field="createLogReport">
+                <f:checkbox field="createLogReport" />
+            </f:entry>
         </f:advanced>
     </f:section>
 </j:jelly>

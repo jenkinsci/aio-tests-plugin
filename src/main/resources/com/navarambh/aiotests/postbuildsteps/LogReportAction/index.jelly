@@ -1,0 +1,19 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+    <l:layout title="Report">
+        <l:side-panel>
+            <st:include page="sidepanel.jelly" it="${it.run}" optional="true" />
+        </l:side-panel>
+        <l:main-panel>
+            <h1 class="build-caption page-headline">
+                <span style="width: 48px; height: 48px;">
+                    <img src="/jenkins/plugin/aio-tests/images/ic-app-icon-48.png"/>
+                </span>
+                AIO Tests logs
+            </h1>
+            <pre class="console-output">
+                <j:out value="${it.name}" />
+            </pre>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>
