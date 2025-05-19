@@ -6,8 +6,8 @@
 
 The AIO Tests Jenkins plugin provides _yet another easy to use interface_ to report test results 
 into [AIO Tests for Jira](https://marketplace.atlassian.com/apps/1222843/aio-tests-for-jira?hosting=cloud&tab=overview), right after the automated tests have run.  The plugin wraps up the AIO [public APIs](https://tcms.aioreports.com/aiotcms-static/api-docs/) to 
-import test results from TestNG/JUnit or NUnit result XML files or Cucumber.json report.   It can be used with any framework capable of generating JUnit files
-like Robot/Cypress amongst many others. 
+import test results from TestNG/JUnit/NUnit/Robot result XML files or Cucumber.json or Newman report.   It can be used with any framework capable of generating JUnit files
+like Webdriverio/Cypress/PyTest amongst many others. 
 
 The plugin gives the following options 
 - to update existing Cycle case runs or create new execution Cycles on the fly for each run.  
@@ -45,17 +45,21 @@ has been generated, the AIO Tests plugin can be used as below to report results 
 6. Specify the API Key generated from AIO Tests in Jira.  Please refer [Generating API Key](https://aioreports.atlassian.net/wiki/spaces/ATDoc/pages/484048912/Access+Token)
 for more information
 
-| Field                                 | Details                                                                                          |
-|---------------------------------------|--------------------------------------------------------------------------------------------------|
+| Field                                 | Details                                                                                            |
+|---------------------------------------|----------------------------------------------------------------------------------------------------|
 | Cycle Preference                      | Select between existing, new cycle or search for an existing cycle by name and create if not found |
-| Cycle Prefix                          | In case of new cycle, Cycle prefix will be used to prefix the cycle title                        |
-| Cycle Key                             | If existing cycle is selected, AIO Tests cycle key eg. SCRUM-CY-121                              |
-| Cycle Name                            | If Create if absent cycle is selected, name of cycle to search or to create in its absence       |
-| Add Case                              | If checked, cases not already in cycle are added, else the cases are reported as errors          |
-| Create New Run                        | If checked, new run is created for each case execution, else existing run is overwritten         |
-| Create Case                           | If checked and no case exists with a matching case key or automation key, a new case is created  |
-| Hide Publish Result Details           | If checked, it would hide testcase wise details                                                  |
-| Fail build if result publishing fails | If checked, the build result will be updated to failed, in case publishing results fails         |
+| Cycle Prefix                          | In case of new cycle, Cycle prefix will be used to prefix the cycle title                          |
+| Cycle Key                             | If existing cycle is selected, AIO Tests cycle key eg. SCRUM-CY-121                                |
+| Cycle Name                            | If Create if absent cycle is selected, name of cycle to search or to create in its absence         |
+| Add Case                              | If checked, cases not already in cycle are added, else the cases are reported as errors            |
+| Create New Run                        | If checked, new run is created for each case execution, else existing run is overwritten           |
+| Create Case                           | If checked and no case exists with a matching case key or automation key, a new case is created    |
+| Ignore class in auto key              | If checked, only method name forms the automation key and classname is ignored from JUnit file.    |
+| Default Folder for Cases              | Folder in which new cases need to be created.  Can be folder hierarchy too.                        |
+| Update Only Run Status                | If checked for BDD frameworks, step matching is skipped and only run status is updated.            |
+| Hide Publish Result Details           | If checked, it would hide testcase wise details                                                    |
+| Fail build if result publishing fails | If checked, the build result will be updated to failed, in case publishing results fails           |
+| Create log report                     | Logs will be created in a separate file instead of being published in console log                  |
 
 ### Reporting results in pipeline
 
@@ -84,8 +88,15 @@ pipeline {
        post {
            always {
                    aioImport frameworkType : 'TestNG',
+                         isBatch: false,
+                         createNewRun: true,
                          addCaseToCycle :true,
                          createCase :true,
+                         ignoreClassInAutoKey: true, 
+                         bddForceUpdateCase: false,
+                         defaultFolder: '',
+                         forceUpdateCase: false,
+                         createLogReport: false,                          
                          entry: [$class: 'NewCycle', cyclePrefix: 'Regression Run V1.0'],
                         //For existing cycles : entry: [$class: 'ExistingCycle', cycleKey: 'SCRUM-CY-191'],
                         //For createIfabsent cycles : entry: [$class: 'CreateIfCycleAbsent', cycleName: 'Regression Release Alpha'],
