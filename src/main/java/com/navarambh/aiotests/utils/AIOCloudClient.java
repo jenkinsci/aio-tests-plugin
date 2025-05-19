@@ -32,6 +32,7 @@ public class AIOCloudClient {
     private static final String CREATE_CYCLE = "/project/{jiraProjectId}/testcycle/detail";
     private static final String SEARCH_CYCLE = "/project/{jiraProjectId}/testcycle/search";
     private static final String GET_OR_CREATE_CYCLE_FOLDER = "/project/{jiraProjectId}/testcycle/folder/hierarchy";
+    private static final String GET_OR_CREATE_CASE_FOLDER = "/project/{jiraProjectId}/testcase/folder/hierarchy";
     private String projectId;
     private Secret apiKey;
     private String jiraServerUrl;
@@ -60,15 +61,17 @@ public class AIOCloudClient {
     public void importResults(String frameworkType, boolean createNewCycle, String testCycleId,
                               boolean addCase, boolean createCase, boolean bddForceUpdateCase,
                               boolean createNewRun, boolean forceUpdateCase, boolean isBatch, boolean hideDetails,
-                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger, boolean createIfAbsent, StringBuilder reportText) {
+                              List<File> resultFiles, Run<?, ?> run, AIOTestsResultRecorder.NewCycle newCycleInfo, PrintStream logger,
+                              boolean createIfAbsent, StringBuilder reportText,boolean ignoreClassInAutoKey, boolean updateOnlyRunStatus, String defaultFolder) {
         String cycleKey = null;
+        Number folderID = null;
         AIOTestsResultRecorder.aioLogger("Result files " + resultFiles.size(), logger, reportText);
         if (createNewCycle) {
             AIOTestsResultRecorder.aioLogger("Creating new cycle with prefix " + testCycleId, logger, reportText);
             if (newCycleInfo != null) {
                 AIOTestsResultRecorder.aioLogger((StringUtils.isNotBlank(newCycleInfo.getCycleFolder()) ? " in folder " + newCycleInfo.getCycleFolder() : "") + " ....", logger, reportText);
             }
-            Number folderId = this.createOrGetFolder(newCycleInfo);
+            Number folderId = this.createOrGetCycleFolder(newCycleInfo);
             HttpResponse<String> response = this.createCycle(testCycleId, run, newCycleInfo == null ? null : newCycleInfo.getCycleTasks(), folderId, true);
             try {
                 JSONObject responseBody = this.validateResponse(response, "Cycle creation");
@@ -112,33 +115,40 @@ public class AIOCloudClient {
         if (isBatch) {
             AIOTestsResultRecorder.aioLogger("Batch results can be viewed in Batches tab of " + cycleKey, logger, reportText);
         }
+        if(StringUtils.isNotBlank(defaultFolder)){
+            folderID = this.createOrGetFolder(defaultFolder,false);
+        }
         for (File resultFile : resultFiles) {
             AIOTestsResultRecorder.aioLogger(StringUtils.rightPad("", 5, "*") + "File Name: " + resultFile.getName() + StringUtils.rightPad("", 5, "*"), logger, reportText);
-            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile, forceUpdateCase, isBatch);
+            HttpResponse<String> response = this.importResults(cycleKey, frameworkType, addCase, createCase, bddForceUpdateCase, createNewRun, resultFile, forceUpdateCase, isBatch, ignoreClassInAutoKey, updateOnlyRunStatus, folderID);
             JSONObject responseBody = this.validateResponse(response, "Import results");
             logResults(frameworkType, responseBody, hideDetails, logger, isBatch, reportText);
         }
     }
 
-    private Number createOrGetFolder(AIOTestsResultRecorder.NewCycle newCycleInfo) {
+    private Number createOrGetCycleFolder(AIOTestsResultRecorder.NewCycle newCycleInfo) {
         if(newCycleInfo != null && StringUtils.isNotBlank(newCycleInfo.getCycleFolder())) {
-            JsonObject jsonObject = new JsonObject();
-            JsonArray j = new JsonArray();
-            String[] folderNames = newCycleInfo.getCycleFolder().split(",");
-            for (String folderName : folderNames) {
-                if (StringUtils.isNotBlank(folderName)) {
-                    j.add(folderName.trim());
-                }
-            }
-            jsonObject.add("folderHierarchy", j);
+            return createOrGetFolder(newCycleInfo.getCycleFolder(), true);
+        }
+        return null;
+    }
 
-            HttpResponse response = this.putHttpRequest(GET_OR_CREATE_CYCLE_FOLDER)
-                    .routeParam("jiraProjectId", this.projectId)
-                    .body(jsonObject).asString();
-            if(response != null && response.isSuccess()) {
-                JSONObject responseBody = this.validateResponse(response, "Fetching or creating folder");
-                return responseBody.getNumber("ID");
+    private Number createOrGetFolder(String folderHierarchy, boolean cycleFolder) {
+        JsonObject jsonObject = new JsonObject();
+        JsonArray j = new JsonArray();
+        String[] folderNames = folderHierarchy.split(",");
+        for (String folderName : folderNames) {
+            if (StringUtils.isNotBlank(folderName)) {
+                j.add(folderName.trim());
             }
+        }
+        jsonObject.add("folderHierarchy", j);
+        HttpResponse response = this.putHttpRequest(cycleFolder ? GET_OR_CREATE_CYCLE_FOLDER : GET_OR_CREATE_CASE_FOLDER)
+                .routeParam("jiraProjectId", this.projectId)
+                .body(jsonObject).asString();
+        if (response != null && response.isSuccess()) {
+            JSONObject responseBody = this.validateResponse(response, "Fetching or creating folder");
+            return responseBody.getNumber("ID");
         }
         return null;
     }
@@ -258,7 +268,7 @@ public class AIOCloudClient {
     }
 
     private HttpResponse<String> importResults(String testCycleId, String frameworkType,
-                                               boolean addCase, boolean createCase, boolean bddForceUpdateCase, boolean createNewRun, File f, boolean forceUpdateCase, boolean isBatch) {
+                                               boolean addCase, boolean createCase, boolean bddForceUpdateCase, boolean createNewRun, File f, boolean forceUpdateCase, boolean isBatch, boolean ignoreClassInAutoKey,boolean updateOnlyRunStatus, Number folderID ) {
         return this.getHttpRequest(isBatch ? IMPORT_RESULTS_FILE_BATCH : IMPORT_RESULTS_FILE, false)
                 .queryString("type",frameworkType)
                 .routeParam("jiraProjectId", this.projectId)
@@ -269,6 +279,9 @@ public class AIOCloudClient {
                 .field("createNewRun", Boolean.toString(createNewRun))
                 .field("bddForceUpdateCase", Boolean.toString(bddForceUpdateCase))
                 .field("forceUpdateCase", Boolean.toString(forceUpdateCase))
+                .field("ignoreClassInAutoKey", Boolean.toString(ignoreClassInAutoKey))
+                .field("updateOnlyRunStatus", Boolean.toString(updateOnlyRunStatus))
+                .field("defaultFolder", folderID == null ? "" : String.valueOf(folderID))
                 .asString();
     }
 

@@ -46,13 +46,17 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     private Boolean createNewRun;
     private Secret apiKey;
     private Entry entry;
-    private Boolean forceUpdateCase;
-    private Boolean isBatch;
+    private String defaultFolder;
+    private Boolean forceUpdateCase = false;
+    private Boolean updateOnlyRunStatus = false;
+    private Boolean ignoreClassInAutoKey = false;
+    private Boolean isBatch = false;
     private Boolean createLogReport = false;
 
     @DataBoundConstructor
     public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle,
-                                  Boolean createCase, Boolean bddForceUpdateCase, Boolean forceUpdateCase, Boolean isBatch, Boolean createNewRun, Boolean createLogReport , Secret apiKey ) {
+                                  Boolean createCase, Boolean bddForceUpdateCase,Boolean forceUpdateCase,Boolean isBatch,Boolean createNewRun,
+                                  Boolean createLogReport, Boolean updateOnlyRunStatus, Boolean ignoreClassInAutoKey, String defaultFolder, Secret apiKey ) {
         this.frameworkType =frameworkType;
         this.projectKey = projectKey;
         this.resultsFilePath = resultsFilePath;
@@ -61,7 +65,10 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.bddForceUpdateCase = bddForceUpdateCase;
         this.createNewRun = createNewRun;
         this.apiKey = apiKey;
+        this.defaultFolder = defaultFolder;
         this.forceUpdateCase = forceUpdateCase;
+        this.updateOnlyRunStatus = updateOnlyRunStatus;
+        this.ignoreClassInAutoKey = ignoreClassInAutoKey;
         this.isBatch = isBatch;
         this.createLogReport = createLogReport;
     }
@@ -131,6 +138,21 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
     public Entry getEntry() {
         return entry;
     }
+
+    public String getDefaultFolder() { return defaultFolder; }
+
+    @DataBoundSetter
+    public void setDefaultFolder(String defaultFolder) { this.defaultFolder = defaultFolder; }
+
+    public Boolean getIgnoreClassInAutoKey() {return ignoreClassInAutoKey;}
+
+    @DataBoundSetter
+    public void setIgnoreClassInAutoKey(Boolean ignoreClassInAutoKey) {this.ignoreClassInAutoKey = ignoreClassInAutoKey;}
+
+    public Boolean getUpdateOnlyRunStatus() {return updateOnlyRunStatus;}
+
+    @DataBoundSetter
+    public void setUpdateOnlyRunStatus(Boolean updateOnlyRunStatus) {this.updateOnlyRunStatus = updateOnlyRunStatus;}
 
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.NONE;
@@ -225,7 +247,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
             AIOCloudClient aioClient = Boolean.parseBoolean(this.isServer())?
                     new AIOCloudClient(this.projectKey, this.jiraServerUrl,this.jiraUsername, this.jiraPassword) : new AIOCloudClient(this.projectKey, this.apiKey);
             aioClient.importResults( this.frameworkType, createNewCycle, cycleData , this.addCaseToCycle, this.createCase, this.bddForceUpdateCase, this.createNewRun, this.forceUpdateCase,this.isBatch,
-                    this.hideDetails, f, run, newCycle,taskListener.getLogger(), createIfAbsent, reportText);
+                    this.hideDetails, f, run, newCycle,taskListener.getLogger(), createIfAbsent, reportText, this.ignoreClassInAutoKey, this.updateOnlyRunStatus , this.defaultFolder);
             if(filePath.isRemote()) {
                 FileUtils.deleteFile(f, taskListener.getLogger(), reportText);
             }
@@ -259,6 +281,12 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         }
         if(this.isBatch == null) {
             this.isBatch = false;
+        }
+        if(this.ignoreClassInAutoKey == null){
+            this.ignoreClassInAutoKey = false;
+        }
+        if(this.updateOnlyRunStatus == null){
+            this.updateOnlyRunStatus = false;
         }
     }
 

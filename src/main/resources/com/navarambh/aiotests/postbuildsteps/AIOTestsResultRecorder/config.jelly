@@ -9,33 +9,36 @@
             <f:entry title="Username" field="jiraUsername">
                 <f:textbox/>
             </f:entry>
-            <f:entry title="Password"  field="jiraPassword">
+            <f:entry title="Password" field="jiraPassword">
                 <f:password/>
             </f:entry>
         </f:radioBlock>
         <f:radioBlock title="AIO Tests Cloud" name="jiraInstanceType" value="cloud" checked="${!instance.isServer()}" inline="true">
-            <f:entry title="API Token" field="apiKey" >
+            <f:entry title="API Token" field="apiKey">
                 <f:password field="apiKey"/>
             </f:entry>
         </f:radioBlock>
         <f:entry title="Report results as a batch" field="isBatch">
-                <f:checkbox field="isBatch" default="false"/>
+            <f:checkbox field="isBatch" default="false"/>
         </f:entry>
         <f:entry title="Framework" field="frameworkType">
-            <select name="frameworkType">
-                <option value="testng" selected="${instance.frameworkType.equals('testng')? 'true':null}">TestNG</option>
+            <select name="frameworkType" onchange="toggleFrameworkDependentFields(this)" id="frameworkTypeSelect">
+                <option value="testng" selected="${instance.frameworkType.equals('testng')? 'true':null}">TestNG
+                </option>
                 <option value="junit" selected="${instance.frameworkType.equals('junit')? 'true':null}">JUnit</option>
-                <option value="cucumber" selected="${instance.frameworkType.equals('cucumber')? 'true':null}">Cucumber</option>
+                <option value="cucumber" selected="${instance.frameworkType.equals('cucumber')? 'true':null}">Cucumber
+                </option>
                 <option value="nunit" selected="${instance.frameworkType.equals('nunit')? 'true':null}">NUnit</option>
-                <option value="newman" selected="${instance.frameworkType.equals('newman')? 'true':null}">Newman</option>
+                <option value="newman" selected="${instance.frameworkType.equals('newman')? 'true':null}">Newman
+                </option>
                 <option value="robot" selected="${instance.frameworkType.equals('robot')? 'true':null}">Robot</option>
             </select>
         </f:entry>
         <f:entry title="Results file path" field="resultsFilePath">
             <f:textbox/>
         </f:entry>
-        <f:entry title="Project Key" field="projectKey" >
-            <f:textbox />
+        <f:entry title="Project Key" field="projectKey">
+            <f:textbox/>
         </f:entry>
         <f:entry title="Cycle Preferences">
             <f:hetero-radio field="entry" descriptors="${descriptor.entryDescriptors}"/>
@@ -47,24 +50,89 @@
             <f:checkbox field="addCaseToCycle"/>
         </f:entry>
         <f:entry title="Create case if no key or automation key is found" field="createCase">
-            <f:checkbox field="createCase"/>
+            <f:checkbox field="createCase" onclick="toggleCreateCaseFields(this)" id="createCaseField"/>
         </f:entry>
-        <f:entry title="Update cases with scenario steps [Cucumber Only]" field="bddForceUpdateCase">
-            <f:checkbox field="bddForceUpdateCase"/>
-        </f:entry>
-        <f:entry title="Force Update cases including steps" field="forceUpdateCase">
-            <f:checkbox field="forceUpdateCase" default="false"/>
-        </f:entry>
+        <div id="defaultFolderField" style="display: none;">
+            <f:entry field="defaultFolder" title="Default Folder (for newly created cases)">
+                <f:textbox/>
+            </f:entry>
+        </div>
+        <div id="bddForceUpdateCaseField" style="display: none;">
+            <f:entry title="Update cases with scenario steps" field="bddForceUpdateCase">
+                <f:checkbox field="bddForceUpdateCase"/>
+            </f:entry>
+        </div>
+        <div id="forceUpdateCaseField" style="display: none;">
+            <f:entry title="Force Update cases including steps" field="forceUpdateCase">
+                <f:checkbox field="forceUpdateCase" default="false"/>
+            </f:entry>
+        </div>
+        <div id="updateOnlyRunStatusField" style="display: none;">
+            <f:entry title="Update run level details only" field="updateOnlyRunStatus">
+                <f:checkbox field="updateOnlyRunStatus" default="false"/>
+            </f:entry>
+        </div>
+        <div id="ignoreClassInAutoKeyField" style="display: none;">
+            <f:entry title="Ignore class in auto key" field="ignoreClassInAutoKey">
+                <f:checkbox field="ignoreClassInAutoKey" default="false"/>
+            </f:entry>
+        </div>
         <f:advanced>
             <f:entry title="Hide publish response details" field="hideDetails">
                 <f:checkbox field="hideDetails"/>
             </f:entry>
             <f:entry title="Fail build if result publishing fails" field="failBuildOnFailure">
-                <f:checkbox field="failBuildOnFailure" />
+                <f:checkbox field="failBuildOnFailure"/>
             </f:entry>
             <f:entry title="Show AIO Tests logs on a separate tab" field="createLogReport">
-                <f:checkbox field="createLogReport" />
+                <f:checkbox field="createLogReport" default="false"/>
             </f:entry>
         </f:advanced>
     </f:section>
+    <script>
+        function toggleCreateCaseFields(checkbox) {
+            const defaultFolderDiv = document.getElementById('defaultFolderField');
+            defaultFolderDiv.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function toggleFrameworkDependentFields(selectObj) {
+            const selectedValue = selectObj.value;
+
+            const ignoreClassInAutoKeyField = document.getElementById('ignoreClassInAutoKeyField');
+            const bddForceUpdateCaseField = document.getElementById('bddForceUpdateCaseField');
+            const updateOnlyRunStatusField = document.getElementById('updateOnlyRunStatusField');
+
+            ignoreClassInAutoKeyField.style.display = 'none';
+            bddForceUpdateCaseField.style.display = 'none';
+            updateOnlyRunStatusField.style.display = 'none';
+
+            switch (selectedValue) {
+                case 'junit':
+                    ignoreClassInAutoKeyField.style.display = 'block';
+                    break;
+                case 'cucumber':
+                    bddForceUpdateCaseField.style.display = 'block';
+                    updateOnlyRunStatusField.style.display = 'block';
+                    break;
+                case 'robot':
+                    forceUpdateCaseField.style.display = 'block';
+                    updateOnlyRunStatusField.style.display = 'block';
+                    break;
+                case 'newman':
+                    bddForceUpdateCaseField.style.display = 'block';
+                    updateOnlyRunStatusField.style.display = 'block';
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Initial toggle on page load
+        window.addEventListener('load', function () {
+            const select = document.getElementById('frameworkTypeSelect');
+            if (select) toggleFrameworkDependentFields(select);
+            const checkbox = document.getElementById('createCaseField');
+            if (checkbox) toggleCreateCaseFields(checkbox);
+        });
+    </script>
 </j:jelly>
