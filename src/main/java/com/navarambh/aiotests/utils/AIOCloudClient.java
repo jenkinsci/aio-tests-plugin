@@ -167,7 +167,7 @@ public class AIOCloudClient {
                 } else {
                     AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("File Size:", 30) + "0"), logger, reportText);
                 }
-                if(responseBody.get("errorMsg") != null){
+                if(responseBody.has("errorMsg") && responseBody.get("errorMsg") != null){
                     AIOTestsResultRecorder.aioLogger((StringUtils.rightPad("Error Msg:", 30) + responseBody.get("errorMsg")), logger, reportText);
                 }
             }
