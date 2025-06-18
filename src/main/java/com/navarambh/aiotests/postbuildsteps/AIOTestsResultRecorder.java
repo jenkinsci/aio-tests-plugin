@@ -55,6 +55,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
 
     @DataBoundConstructor
     public AIOTestsResultRecorder(String projectKey, String frameworkType, String resultsFilePath, Boolean addCaseToCycle,
+
                                   Boolean createCase, Boolean bddForceUpdateCase,Boolean forceUpdateCase,Boolean isBatch,
                                   Boolean createNewRun, Boolean createLogReport, Boolean updateOnlyRunStatus, Boolean ignoreClassInAutoKey,
                                   String defaultFolder,Secret apiKey ) {
