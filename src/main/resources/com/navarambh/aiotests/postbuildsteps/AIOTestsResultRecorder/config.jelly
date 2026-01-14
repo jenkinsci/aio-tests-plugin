@@ -62,8 +62,8 @@
                 <f:checkbox field="bddForceUpdateCase"/>
             </f:entry>
         </div>
-        <div id="forceUpdateCaseField" style="display: none;">
-            <f:entry title="Force Update cases including steps" field="forceUpdateCase">
+        <div id="forceUpdateCaseField">
+            <f:entry title="Force Update cases" field="forceUpdateCase">
                 <f:checkbox field="forceUpdateCase" default="false"/>
             </f:entry>
         </div>
@@ -105,9 +105,14 @@
             ignoreClassInAutoKeyField.style.display = 'none';
             bddForceUpdateCaseField.style.display = 'none';
             updateOnlyRunStatusField.style.display = 'none';
+            forceUpdateCaseField.style.display = 'none';
 
             switch (selectedValue) {
+                case 'testng':
+                    forceUpdateCaseField.style.display = 'block';
+                    break;
                 case 'junit':
+                    forceUpdateCaseField.style.display = 'block';
                     ignoreClassInAutoKeyField.style.display = 'block';
                     break;
                 case 'cucumber':
