@@ -66,10 +66,7 @@ public class AIOTestsResultRecorder extends Recorder implements SimpleBuildStep 
         this.bddForceUpdateCase = bddForceUpdateCase;
         this.createNewRun = createNewRun;
         this.apiKey = apiKey;
-        this.defaultFolder = defaultFolder;
         this.forceUpdateCase = forceUpdateCase;
-        this.updateOnlyRunStatus = updateOnlyRunStatus;
-        this.ignoreClassInAutoKey = ignoreClassInAutoKey;
         this.isBatch = isBatch;
         this.createLogReport = createLogReport;
     }
